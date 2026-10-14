@@ -1,0 +1,6 @@
+{
+  "name": "Pastelaria Santo Grau - Cardápio & Gestão",
+  "description": "Sistema completo para pastelaria com PWA instalável no celular, cardápio digital via QR Code, segurança JWT e backend Spring Boot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

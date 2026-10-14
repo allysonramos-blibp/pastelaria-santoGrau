@@ -1,0 +1,272 @@
+import React, { useState } from 'react';
+import { MenuItem, ProductCategory, StoreSettings, CartItem } from '../types';
+import { formatBRL } from '../utils/format';
+import { PastelVisual } from './PastelVisual';
+import { Search, Plus, ShoppingBag, Clock, MapPin, Bike, Sparkles, Check } from 'lucide-react';
+
+interface CustomerMenuProps {
+  menuItems: MenuItem[];
+  settings: StoreSettings;
+  cart: CartItem[];
+  onOpenItemCustomize: (item: MenuItem) => void;
+  onOpenCart: () => void;
+  onViewOrderTracking?: () => void;
+  activeOrderCount?: number;
+}
+
+export const CustomerMenu: React.FC<CustomerMenuProps> = ({
+  menuItems,
+  settings,
+  cart,
+  onOpenItemCustomize,
+  onOpenCart,
+  onViewOrderTracking,
+  activeOrderCount = 0,
+}) => {
+  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
+  const [search, setSearch] = useState('');
+
+  const categories: { id: ProductCategory | 'all'; label: string }[] = [
+    { id: 'all', label: 'Todos os Sabores' },
+    { id: 'salgados', label: 'Salgados Tradicionais' },
+    { id: 'especiais', label: 'Especiais Gourmet' },
+    { id: 'doces', label: 'Pastéis Doces' },
+    { id: 'combos', label: 'Combos & Ofertas' },
+    { id: 'bebidas', label: 'Caldo de Cana & Bebidas' },
+    { id: 'porcoes', label: 'Porções & Mini Pastéis' },
+  ];
+
+  const filteredItems = menuItems.filter((item) => {
+    if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchDesc = item.description.toLowerCase().includes(q);
+      const matchIng = item.ingredients?.some((ing) => ing.toLowerCase().includes(q));
+      if (!matchName && !matchDesc && !matchIng) return false;
+    }
+    return true;
+  });
+
+  const cartItemsCount = cart.reduce((acc, c) => acc + c.quantity, 0);
+  const cartSubtotal = cart.reduce((acc, c) => acc + c.totalPrice, 0);
+
+  return (
+    <div className="space-y-8 pb-24">
+      {/* Hero Showcase Section */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-600 via-amber-700 to-stone-900 text-white p-6 sm:p-10 shadow-lg">
+        {/* Subtle decorative circles */}
+        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-amber-500/20 blur-2xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-orange-500/20 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-2xl space-y-4">
+          <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-200 uppercase tracking-wider">
+            <span>🥟 Massa Feita Todos os Dias</span>
+            <span aria-hidden="true">·</span>
+            <span>Frito na Hora</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-black font-heading tracking-tight leading-tight text-white text-balance">
+            {settings.storeName}
+          </h1>
+
+          <p className="text-base sm:text-lg text-amber-100/90 leading-relaxed max-w-xl">
+            {settings.slogan}
+          </p>
+
+          {/* Quick Info Grid */}
+          <div className="pt-2 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs sm:text-sm text-stone-200">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>{settings.openingHours}</span>
+            </div>
+            <span aria-hidden="true" className="text-amber-400/60 hidden sm:inline">·</span>
+            <div className="flex items-center gap-1.5">
+              <Bike className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>Entrega rápida ({formatBRL(settings.defaultDeliveryFee)})</span>
+            </div>
+            <span aria-hidden="true" className="text-amber-400/60 hidden sm:inline">·</span>
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-amber-300 shrink-0" />
+              <span>{settings.address}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating badge for active orders */}
+        {activeOrderCount > 0 && onViewOrderTracking && (
+          <div className="mt-6 pt-4 border-t border-white/15 flex items-center justify-between">
+            <div className="text-xs text-amber-200">
+              Você tem {activeOrderCount} pedido(s) em andamento!
+            </div>
+            <button
+              onClick={onViewOrderTracking}
+              className="px-3 py-1.5 bg-white text-stone-900 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+            >
+              Acompanhar Pedido
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Filter and Search Bar */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Live Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3.5" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pesquisar sabor, carne seca, queijo, nutella..."
+              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-2xl bg-white border border-stone-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          <div className="text-xs text-stone-500 font-medium">
+            Exibindo {filteredItems.length} opções apetitosas
+          </div>
+        </div>
+
+        {/* Category Segmented Scrollable Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                selectedCategory === cat.id
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-white text-stone-700 border border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Product Grid */}
+      <section>
+        {filteredItems.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center text-stone-500">
+            <p className="text-base font-semibold">Nenhum pastel encontrado.</p>
+            <p className="text-xs text-stone-400 mt-1">
+              Tente buscar por outro ingrediente ou sabor.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id}
+                className="group bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                {/* Visual Cover */}
+                <div className="relative">
+                  <PastelVisual
+                    category={item.category}
+                    name={item.name}
+                    imageUrl={item.imageUrl}
+                    className="h-44 w-full"
+                  />
+                  {item.badge && (
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-bold tracking-wide">
+                      {item.badge}
+                    </div>
+                  )}
+                  {!item.available && (
+                    <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center">
+                      <span className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold uppercase">
+                        Esgotado Hoje
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-bold font-heading text-stone-900 text-base sm:text-lg leading-snug group-hover:text-amber-700 transition-colors">
+                        {item.name}
+                      </h3>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-stone-600 mt-1.5 leading-relaxed line-clamp-2">
+                      {item.description}
+                    </p>
+
+                    {item.ingredients && item.ingredients.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[11px] text-stone-500">
+                        {item.ingredients.slice(0, 3).map((ing, i) => (
+                          <span key={i}>
+                            {ing}
+                            {i < Math.min(2, item.ingredients!.length - 1) && ' · '}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Price & Action */}
+                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-[10px] text-stone-400 uppercase tracking-wider font-semibold">
+                        A partir de
+                      </div>
+                      <div className="text-lg font-bold font-heading text-amber-700 tabular-nums">
+                        {formatBRL(item.price)}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onOpenItemCustomize(item)}
+                      disabled={!item.available}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-40 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{item.sizeOptions || item.category === 'salgados' ? 'Personalizar' : 'Adicionar'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Sticky Bottom Cart Bar (Appears when cart has items) */}
+      {cartItemsCount > 0 && (
+        <div className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 animate-in fade-in slide-in-from-bottom-4">
+          <button
+            type="button"
+            onClick={onOpenCart}
+            className="w-full flex items-center justify-between p-4 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white shadow-2xl transition-all active:scale-[0.99] cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-900 flex items-center justify-center font-bold text-sm">
+                {cartItemsCount}
+              </div>
+              <div className="text-left">
+                <div className="text-xs text-stone-300">Ver pedido</div>
+                <div className="text-sm font-bold">{cartItemsCount} {cartItemsCount === 1 ? 'pastel' : 'itens'} no carrinho</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-base font-bold text-amber-400 tabular-nums">
+                {formatBRL(cartSubtotal)}
+              </span>
+              <span className="text-xs bg-white/20 px-2.5 py-1 rounded-lg font-semibold">
+                Avançar →
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

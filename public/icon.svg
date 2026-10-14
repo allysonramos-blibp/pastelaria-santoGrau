@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="pastelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1c1917" />
+      <stop offset="100%" stop-color="#0c0a09" />
+    </radialGradient>
+  </defs>
+  <!-- Background with rounded rectangle for PWA maskable icon -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)" />
+  
+  <!-- Outer glowing accent ring -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#d97706" stroke-width="6" opacity="0.4" />
+
+  <!-- Brazilian Pastel Golden Silhouette -->
+  <g transform="translate(66, 126)">
+    <!-- Main crust body -->
+    <path d="M40 70 C 140 30, 240 30, 340 70 L 330 200 C 230 240, 150 240, 50 200 Z" fill="url(#pastelGrad)" stroke="#f59e0b" stroke-width="8" stroke-linejoin="round"/>
+    
+    <!-- Fork crimping marks on the borders -->
+    <path d="M60 90 L60 180 M90 75 L90 195 M300 75 L300 195 M320 90 L320 180" stroke="#78350f" stroke-width="6" stroke-dasharray="6 6"/>
+    
+    <!-- Golden bubbly flaky blisters -->
+    <ellipse cx="140" cy="120" rx="28" ry="16" fill="#fef3c7" opacity="0.85" />
+    <ellipse cx="230" cy="130" rx="34" ry="18" fill="#fef3c7" opacity="0.85" />
+    <ellipse cx="185" cy="165" rx="22" ry="12" fill="#fef3c7" opacity="0.75" />
+    <ellipse cx="270" cy="100" rx="18" ry="10" fill="#fef3c7" opacity="0.8" />
+  </g>
+
+  <!-- Typography: SANTO GRAU -->
+  <text x="256" y="415" font-family="'Outfit', sans-serif" font-size="34" font-weight="900" fill="#fbbf24" text-anchor="middle" letter-spacing="4">SANTO GRAU</text>
+  <text x="256" y="445" font-family="'Plus Jakarta Sans', sans-serif" font-size="16" font-weight="700" fill="#a8a29e" text-anchor="middle" letter-spacing="3">PASTELARIA</text>
+</svg>
