@@ -107,48 +107,14 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({ settings, isOpen, onClos
               </p>
             </div>
 
-            {/* High-Contrast SVG QR Code Representation */}
-            <div className="w-48 h-48 mx-auto bg-white p-3.5 rounded-2xl shadow-md border border-stone-200 flex items-center justify-center">
-              <svg viewBox="0 0 100 100" className="w-full h-full text-stone-900" fill="currentColor">
-                {/* 3 Corner Markers */}
-                <rect x="5" y="5" width="26" height="26" />
-                <rect x="9" y="9" width="18" height="18" fill="white" />
-                <rect x="13" y="13" width="10" height="10" />
-
-                <rect x="69" y="5" width="26" height="26" />
-                <rect x="73" y="9" width="18" height="18" fill="white" />
-                <rect x="77" y="13" width="10" height="10" />
-
-                <rect x="5" y="69" width="26" height="26" />
-                <rect x="9" y="73" width="18" height="18" fill="white" />
-                <rect x="13" y="77" width="10" height="10" />
-
-                {/* Inner Data Pattern */}
-                <rect x="36" y="8" width="6" height="6" />
-                <rect x="46" y="8" width="14" height="6" />
-                <rect x="36" y="18" width="6" height="12" />
-                <rect x="46" y="24" width="16" height="6" />
-
-                <rect x="8" y="36" width="12" height="6" />
-                <rect x="24" y="42" width="6" height="18" />
-                <rect x="36" y="36" width="12" height="12" />
-                <rect x="52" y="42" width="12" height="6" />
-                <rect x="68" y="36" width="18" height="6" />
-                <rect x="90" y="42" width="6" height="12" />
-
-                <rect x="14" y="58" width="12" height="6" />
-                <rect x="36" y="52" width="6" height="18" />
-                <rect x="46" y="58" width="12" height="12" />
-                <rect x="68" y="52" width="12" height="12" />
-                <rect x="84" y="58" width="12" height="6" />
-
-                <rect x="36" y="78" width="18" height="6" />
-                <rect x="58" y="72" width="6" height="18" />
-                <rect x="68" y="78" width="12" height="6" />
-                <rect x="84" y="72" width="12" height="12" />
-                <rect x="42" y="88" width="24" height="6" />
-                <rect x="72" y="88" width="18" height="10" />
-              </svg>
+            {/* High-Contrast Real Scannable QR Code */}
+            <div className="w-52 h-52 mx-auto bg-white p-3 rounded-2xl shadow-md border-2 border-amber-300 flex items-center justify-center relative overflow-hidden">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=1&data=${encodeURIComponent(qrTargetUrl)}`}
+                alt={`QR Code para ${selectedTable}`}
+                className="w-full h-full object-contain"
+                loading="eager"
+              />
             </div>
 
             <div className="flex items-center justify-center gap-2 text-xs text-stone-500 font-mono">

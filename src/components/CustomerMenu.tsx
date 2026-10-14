@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MenuItem, ProductCategory, StoreSettings, CartItem } from '../types';
 import { formatBRL } from '../utils/format';
 import { PastelVisual } from './PastelVisual';
-import { Search, Plus, ShoppingBag, Clock, MapPin, Bike, Sparkles, Check } from 'lucide-react';
+import { Search, Plus, ShoppingBag, Clock, MapPin, Bike, Sparkles, Check, Flame } from 'lucide-react';
 
 interface CustomerMenuProps {
   menuItems: MenuItem[];
@@ -26,14 +26,14 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [search, setSearch] = useState('');
 
-  const categories: { id: ProductCategory | 'all'; label: string }[] = [
-    { id: 'all', label: 'Todos os Sabores' },
-    { id: 'salgados', label: 'Salgados Tradicionais' },
-    { id: 'especiais', label: 'Especiais Gourmet' },
-    { id: 'doces', label: 'Pastéis Doces' },
-    { id: 'combos', label: 'Combos & Ofertas' },
-    { id: 'bebidas', label: 'Caldo de Cana & Bebidas' },
-    { id: 'porcoes', label: 'Porções & Mini Pastéis' },
+  const categories: { id: ProductCategory | 'all'; label: string; icon: string }[] = [
+    { id: 'all', label: 'Todos os Sabores', icon: '🥟' },
+    { id: 'salgados', label: 'Tradicionais', icon: '🥟' },
+    { id: 'especiais', label: 'Especiais Gourmet', icon: '⭐' },
+    { id: 'doces', label: 'Pastéis Doces', icon: '🍫' },
+    { id: 'combos', label: 'Combos & Ofertas', icon: '🎁' },
+    { id: 'bebidas', label: 'Caldo de Cana & Bebidas', icon: '🥤' },
+    { id: 'porcoes', label: 'Porções & Mini Pastéis', icon: '🍟' },
   ];
 
   const filteredItems = menuItems.filter((item) => {
@@ -52,25 +52,28 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
   const cartSubtotal = cart.reduce((acc, c) => acc + c.totalPrice, 0);
 
   return (
-    <div className="space-y-8 pb-24">
-      {/* Hero Showcase Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-600 via-amber-700 to-stone-900 text-white p-6 sm:p-10 shadow-lg">
+    <div className="space-y-8 pb-28">
+      {/* Modern Gastronomic Hero Showcase Section */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-600 via-amber-700 to-stone-900 text-white p-6 sm:p-10 shadow-xl border border-amber-500/20">
         {/* Subtle decorative circles */}
-        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-amber-500/20 blur-2xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-orange-500/20 blur-2xl pointer-events-none" />
+        <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-amber-400/25 blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-72 h-72 rounded-full bg-orange-500/25 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-200 uppercase tracking-wider">
-            <span>🥟 Massa Feita Todos os Dias</span>
-            <span aria-hidden="true">·</span>
-            <span>Frito na Hora</span>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-amber-200 uppercase tracking-wider">
+            <span className="flex items-center gap-1 bg-amber-500/30 backdrop-blur-xs px-2.5 py-1 rounded-full border border-amber-300/30">
+              <Flame className="w-3.5 h-3.5 text-amber-300" />
+              <span>Frito na Hora</span>
+            </span>
+            <span className="hidden sm:inline" aria-hidden="true">·</span>
+            <span className="bg-white/10 backdrop-blur-xs px-2.5 py-1 rounded-full">Massa Fresca Todo Dia</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black font-heading tracking-tight leading-tight text-white text-balance">
             {settings.storeName}
           </h1>
 
-          <p className="text-base sm:text-lg text-amber-100/90 leading-relaxed max-w-xl">
+          <p className="text-sm sm:text-base text-amber-100/90 leading-relaxed max-w-xl">
             {settings.slogan}
           </p>
 
@@ -83,7 +86,7 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
             <span aria-hidden="true" className="text-amber-400/60 hidden sm:inline">·</span>
             <div className="flex items-center gap-1.5">
               <Bike className="w-4 h-4 text-amber-300 shrink-0" />
-              <span>Entrega rápida ({formatBRL(settings.defaultDeliveryFee)})</span>
+              <span>Entrega ({formatBRL(settings.defaultDeliveryFee)})</span>
             </div>
             <span aria-hidden="true" className="text-amber-400/60 hidden sm:inline">·</span>
             <div className="flex items-center gap-1.5">
@@ -96,12 +99,12 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
         {/* Floating badge for active orders */}
         {activeOrderCount > 0 && onViewOrderTracking && (
           <div className="mt-6 pt-4 border-t border-white/15 flex items-center justify-between">
-            <div className="text-xs text-amber-200">
+            <div className="text-xs text-amber-200 font-medium">
               Você tem {activeOrderCount} pedido(s) em andamento!
             </div>
             <button
               onClick={onViewOrderTracking}
-              className="px-3 py-1.5 bg-white text-stone-900 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+              className="px-3.5 py-1.5 bg-white text-stone-900 rounded-xl text-xs font-bold hover:bg-amber-100 transition-all cursor-pointer shadow-sm active:scale-95"
             >
               Acompanhar Pedido
             </button>
@@ -120,147 +123,176 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Pesquisar sabor, carne seca, queijo, nutella..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-2xl bg-white border border-stone-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-2xl bg-white border border-stone-200 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-stone-400"
             />
           </div>
 
           <div className="text-xs text-stone-500 font-medium">
-            Exibindo {filteredItems.length} opções apetitosas
+            Exibindo <span className="font-bold text-stone-800">{filteredItems.length}</span> opções no cardápio
           </div>
         </div>
 
-        {/* Category Segmented Scrollable Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                selectedCategory === cat.id
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'bg-white text-stone-700 border border-stone-200 hover:border-stone-300 hover:bg-stone-50'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Category Segmented Scrollable Tabs with Icons */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none py-1">
+          {categories.map((cat) => {
+            const count = cat.id === 'all' 
+              ? menuItems.length 
+              : menuItems.filter(m => m.category === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  selectedCategory === cat.id
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25 scale-[1.02]'
+                    : 'bg-white text-stone-700 border border-stone-200/90 hover:border-amber-300 hover:bg-stone-50'
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  selectedCategory === cat.id ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-500'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
       {/* Product Grid */}
       <section>
         {filteredItems.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center text-stone-500">
-            <p className="text-base font-semibold">Nenhum pastel encontrado.</p>
-            <p className="text-xs text-stone-400 mt-1">
-              Tente buscar por outro ingrediente ou sabor.
+          <div className="bg-white rounded-3xl border border-stone-200 p-14 text-center text-stone-500 space-y-3 shadow-xs">
+            <div className="text-4xl">🥟</div>
+            <p className="text-base font-bold text-stone-800">Nenhum pastel encontrado.</p>
+            <p className="text-xs text-stone-400 max-w-sm mx-auto">
+              Não encontramos resultados para sua busca. Tente buscar por outro sabor ou ingrediente.
             </p>
+            <button
+              onClick={() => { setSelectedCategory('all'); setSearch(''); }}
+              className="mt-2 px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold cursor-pointer"
+            >
+              Limpar Filtros
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="group bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-              >
-                {/* Visual Cover */}
-                <div className="relative">
-                  <PastelVisual
-                    category={item.category}
-                    name={item.name}
-                    imageUrl={item.imageUrl}
-                    className="h-44 w-full"
-                  />
-                  {item.badge && (
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-bold tracking-wide">
-                      {item.badge}
-                    </div>
-                  )}
-                  {!item.available && (
-                    <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center">
-                      <span className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold uppercase">
-                        Esgotado Hoje
-                      </span>
-                    </div>
-                  )}
-                </div>
+            {filteredItems.map((item) => {
+              const inCartQty = cart
+                .filter((c) => c.menuItem.id === item.id)
+                .reduce((sum, c) => sum + c.quantity, 0);
 
-                {/* Details */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold font-heading text-stone-900 text-base sm:text-lg leading-snug group-hover:text-amber-700 transition-colors">
-                        {item.name}
-                      </h3>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-stone-600 mt-1.5 leading-relaxed line-clamp-2">
-                      {item.description}
-                    </p>
-
-                    {item.ingredients && item.ingredients.length > 0 && (
-                      <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[11px] text-stone-500">
-                        {item.ingredients.slice(0, 3).map((ing, i) => (
-                          <span key={i}>
-                            {ing}
-                            {i < Math.min(2, item.ingredients!.length - 1) && ' · '}
-                          </span>
-                        ))}
+              return (
+                <div
+                  key={item.id}
+                  className="group bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:border-amber-300 transition-all flex flex-col justify-between"
+                >
+                  {/* Visual Cover */}
+                  <div className="relative">
+                    <PastelVisual
+                      category={item.category}
+                      name={item.name}
+                      imageUrl={item.imageUrl}
+                      className="h-44 w-full"
+                    />
+                    {item.badge && (
+                      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-stone-900/85 backdrop-blur-xs text-white text-[11px] font-bold tracking-wide shadow-xs">
+                        {item.badge}
+                      </div>
+                    )}
+                    {inCartQty > 0 && (
+                      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold tracking-wide shadow-xs flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        <span>{inCartQty} no carrinho</span>
+                      </div>
+                    )}
+                    {!item.available && (
+                      <div className="absolute inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center">
+                        <span className="px-3.5 py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold uppercase shadow-md">
+                          Esgotado Hoje
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Price & Action */}
-                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                  {/* Details */}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div>
-                      <div className="text-[10px] text-stone-400 uppercase tracking-wider font-semibold">
-                        A partir de
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold font-heading text-stone-900 text-base sm:text-lg leading-snug group-hover:text-amber-700 transition-colors">
+                          {item.name}
+                        </h3>
                       </div>
-                      <div className="text-lg font-bold font-heading text-amber-700 tabular-nums">
-                        {formatBRL(item.price)}
-                      </div>
+
+                      <p className="text-xs sm:text-sm text-stone-600 mt-1.5 leading-relaxed line-clamp-2">
+                        {item.description}
+                      </p>
+
+                      {item.ingredients && item.ingredients.length > 0 && (
+                        <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[11px] text-stone-500">
+                          {item.ingredients.slice(0, 3).map((ing, i) => (
+                            <span key={i} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md font-medium">
+                              {ing}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onOpenItemCustomize(item)}
-                      disabled={!item.available}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-40 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>{item.sizeOptions || item.category === 'salgados' ? 'Personalizar' : 'Adicionar'}</span>
-                    </button>
+                    {/* Price & Action */}
+                    <div className="pt-3.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] text-stone-400 uppercase tracking-wider font-semibold">
+                          A partir de
+                        </div>
+                        <div className="text-xl font-black font-heading text-amber-700 tabular-nums">
+                          {formatBRL(item.price)}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onOpenItemCustomize(item)}
+                        disabled={!item.available}
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-40 text-white text-xs font-bold shadow-md shadow-amber-600/20 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{item.sizeOptions || item.category === 'salgados' ? 'Personalizar' : 'Adicionar'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
 
       {/* Sticky Bottom Cart Bar (Appears when cart has items) */}
       {cartItemsCount > 0 && (
-        <div className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 animate-in fade-in slide-in-from-bottom-4 duration-150">
           <button
             type="button"
             onClick={onOpenCart}
-            className="w-full flex items-center justify-between p-4 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white shadow-2xl transition-all active:scale-[0.99] cursor-pointer"
+            className="w-full flex items-center justify-between p-4 rounded-3xl bg-stone-900 hover:bg-stone-800 text-white shadow-2xl transition-all active:scale-[0.99] cursor-pointer border border-stone-700"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-900 flex items-center justify-center font-bold text-sm">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center font-black text-sm shadow-md">
                 {cartItemsCount}
               </div>
               <div className="text-left">
-                <div className="text-xs text-stone-300">Ver pedido</div>
+                <div className="text-xs text-amber-300 font-bold uppercase tracking-wider">Ver Pedido</div>
                 <div className="text-sm font-bold">{cartItemsCount} {cartItemsCount === 1 ? 'pastel' : 'itens'} no carrinho</div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-base font-bold text-amber-400 tabular-nums">
+            <div className="flex items-center gap-2.5">
+              <span className="text-base font-black text-amber-400 tabular-nums font-heading">
                 {formatBRL(cartSubtotal)}
               </span>
-              <span className="text-xs bg-white/20 px-2.5 py-1 rounded-lg font-semibold">
+              <span className="text-xs bg-white text-stone-950 px-3 py-1.5 rounded-xl font-bold shadow-xs">
                 Avançar →
               </span>
             </div>

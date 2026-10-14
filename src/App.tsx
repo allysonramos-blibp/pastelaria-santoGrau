@@ -25,16 +25,19 @@ import { SpringBootIntegration } from './components/SpringBootIntegration';
 import { ThermalReceipt } from './components/ThermalReceipt';
 import { LoginModal } from './components/LoginModal';
 import { QrCodeCard } from './components/QrCodeCard';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playChimeSound } from './utils/sound';
-import { api } from './services/api';
+import { api, getLocalDeletedIds, saveLocalDeletedId } from './services/api';
 import { authService, AuthUser } from './services/auth';
-import { RotateCcw, Heart, Lock, ShieldAlert } from 'lucide-react';
+import { RotateCcw, Heart, Lock, ShieldAlert, Wifi, RefreshCw } from 'lucide-react';
 
 export default function App() {
-  // 1. Persistent State with localStorage fallback
+  // 1. Persistent State with localStorage fallback and server sync
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
+    const deletedSet = new Set(getLocalDeletedIds());
     const saved = localStorage.getItem('pastelaria_menu_items');
-    return saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
+    const list: MenuItem[] = saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
+    return list.filter((item) => !deletedSet.has(item.id));
   });
 
   const [extras, setExtras] = useState<ExtraOption[]>(() => {
@@ -92,9 +95,78 @@ export default function App() {
     localStorage.setItem('pastelaria_orders', JSON.stringify(orders));
   }, [orders]);
 
+  // Multi-Device Auto-Sync Engine (Keeps PC, Mobile, and Server in perfect sync)
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+
+  const refreshSync = async () => {
+    try {
+      setSyncStatus('syncing');
+      const bundle = await api.syncCatalog(INITIAL_MENU_ITEMS);
+      if (bundle) {
+        const deletedSet = new Set(bundle.deletedIds);
+        setMenuItems((current) => {
+          const cleaned = bundle.products.filter((p) => !deletedSet.has(p.id));
+          return cleaned;
+        });
+        if (bundle.orders && bundle.orders.length > 0) {
+          setOrders(bundle.orders);
+        }
+        setSyncStatus('synced');
+        setLastSyncTime(new Date());
+      }
+    } catch {
+      setSyncStatus('offline');
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem('pastelaria_cart', JSON.stringify(cart));
-  }, [cart]);
+    refreshSync();
+
+    // Polling every 5 seconds so deletions on PC reflect on mobile automatically
+    const interval = setInterval(refreshSync, 5000);
+
+    // Sync immediately when user switches tabs or unlocks phone screen
+    const handleVis = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSync();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVis);
+    window.addEventListener('focus', refreshSync);
+
+    // Cross-tab broadcast listener for immediate updates
+    const ch = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pastelaria_sync') : null;
+    if (ch) {
+      ch.onmessage = (e) => {
+        if (e.data?.type === 'PRODUCT_DELETED') {
+          const delId = e.data.productId;
+          saveLocalDeletedId(delId);
+          setMenuItems((prev) => prev.filter((p) => p.id !== delId));
+        } else if (e.data?.type === 'PRODUCT_SAVED') {
+          const prod = e.data.product;
+          setMenuItems((prev) => {
+            const idx = prev.findIndex((p) => p.id === prod.id);
+            if (idx >= 0) {
+              const cp = [...prev];
+              cp[idx] = prod;
+              return cp;
+            }
+            return [...prev, prod];
+          });
+        } else if (e.data?.type === 'NEW_ORDER') {
+          setOrders((prev) => [e.data.order, ...prev.filter((o) => o.id !== e.data.order.id)]);
+        }
+      };
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVis);
+      window.removeEventListener('focus', refreshSync);
+      ch?.close();
+    };
+  }, []);
 
   // Cart Handlers
   const handleAddToCart = (newItem: CartItem) => {
@@ -171,6 +243,7 @@ export default function App() {
   };
 
   const handleDeleteMenuItem = (itemId: string) => {
+    saveLocalDeletedId(itemId);
     setMenuItems((prev) => prev.filter((i) => i.id !== itemId));
     api.deleteProduct(itemId);
   };
@@ -441,6 +514,14 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Live Sync Status indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 text-[11px] font-medium text-stone-600">
+              <span className={`w-2 h-2 rounded-full ${syncStatus === 'synced' ? 'bg-emerald-500' : syncStatus === 'syncing' ? 'bg-amber-500 animate-pulse' : 'bg-red-400'}`} />
+              <span>
+                {syncStatus === 'synced' ? 'Cardápio sincronizado ao vivo' : syncStatus === 'syncing' ? 'Sincronizando...' : 'Modo local'}
+              </span>
+            </div>
+
             <button
               onClick={handleResetDemoData}
               className="flex items-center gap-1 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
@@ -453,6 +534,9 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Floating mobile PWA install banner */}
+      <PWAInstallBanner />
     </div>
   );
 }

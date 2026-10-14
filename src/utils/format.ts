@@ -54,11 +54,12 @@ export function buildWhatsAppOrderMessage(order: Order, settings: StoreSettings)
     orderTypeDesc = `🛍️ *RETIRADA NO BALCÃO*`;
   }
 
-  const paymentLabels = {
+  const paymentLabels: Record<string, string> = {
     pix: 'PIX (Chave da Pastelaria)',
-    cartao_credito: 'Cartão de Crédito',
-    cartao_debito: 'Cartão de Débito',
+    cartao_credito: 'Cartão de Crédito (Maquininha)',
+    cartao_debito: 'Cartão de Débito (Maquininha)',
     dinheiro: `Dinheiro${order.needChangeFor ? ` (Troco para ${formatBRL(order.needChangeFor)})` : ' (Sem troco)'}`,
+    vale_refeicao: 'Vale Refeição / Alimentação (VR, Pluxee, Alelo)',
   };
 
   let message = `🥟 *PEDIDO #${order.orderNumber} - ${settings.storeName.toUpperCase()}*\n`;

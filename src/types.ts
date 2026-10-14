@@ -45,7 +45,7 @@ export interface CartItem {
 }
 
 export type OrderType = 'delivery' | 'retirada' | 'mesa';
-export type PaymentMethod = 'pix' | 'cartao_credito' | 'cartao_debito' | 'dinheiro';
+export type PaymentMethod = 'pix' | 'cartao_credito' | 'cartao_debito' | 'dinheiro' | 'vale_refeicao';
 export type OrderStatus = 'novo' | 'em_preparo' | 'pronto' | 'entregue' | 'cancelado';
 
 export interface Order {
