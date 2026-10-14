@@ -96,6 +96,55 @@ export function viteApiPlugin() {
             return res.end(JSON.stringify({ success: ok }));
           }
 
+                    if (pathOnly === '/api/users') {
+            if (req.method === 'GET') {
+              return res.end(JSON.stringify(serverDb.getUsers()));
+            }
+            if (req.method === 'POST') {
+              const body = await readBody();
+              const { name, username, password, role } = body;
+              if (!name || !username) {
+                res.statusCode = 400;
+                return res.end(JSON.stringify({ error: 'Nome e usuário são obrigatórios.' }));
+              }
+              const cleanUsername = username.trim().toLowerCase();
+              const existing = serverDb.getUsers().find((u) => u.username.toLowerCase() === cleanUsername);
+              if (existing) {
+                res.statusCode = 409;
+                return res.end(JSON.stringify({ error: 'Este nome de usuário já está em uso.' }));
+              }
+              const newUser = {
+                id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                name: name.trim(),
+                username: cleanUsername,
+                password: password || '123',
+                role: role || 'GERENTE',
+                createdAt: new Date().toISOString(),
+              };
+              const saved = serverDb.saveUser(newUser);
+              res.statusCode = 201;
+              return res.end(JSON.stringify(saved));
+            }
+          }
+
+          if (pathOnly.startsWith('/api/users/') && req.method === 'DELETE') {
+            const id = pathOnly.split('/')[3];
+            const ok = serverDb.deleteUser(id);
+            return res.end(JSON.stringify({ success: ok }));
+          }
+
+          if (pathOnly === '/api/auth/login' && req.method === 'POST') {
+            const body = await readBody();
+            const { username, password } = body;
+            const user = serverDb.getUserByCredentials(username, password);
+            if (!user) {
+              res.statusCode = 401;
+              return res.end(JSON.stringify({ error: 'Usuário ou senha incorretos.' }));
+            }
+            const token = `jwt-${Buffer.from(JSON.stringify({ sub: user.username, role: user.role, time: Date.now() })).toString('base64')}`;
+            return res.end(JSON.stringify({ success: true, token, user }));
+          }
+
           if (pathOnly === '/api/sync' && req.method === 'GET') {
             return res.end(JSON.stringify(serverDb.getSyncBundle()));
           }
