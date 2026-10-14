@@ -50,6 +50,8 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
   const [copiedPix, setCopiedPix] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [pixPaidSimulated, setPixPaidSimulated] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [whatsAppUrl, setWhatsAppUrl] = useState<string>('');
 
   const subtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
   const deliveryFee = orderType === 'delivery' ? settings.defaultDeliveryFee : 0;
@@ -72,20 +74,21 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
   };
 
   const handleFinalizeOrder = () => {
+    setValidationError(null);
     if (!customerName.trim()) {
-      alert('Por favor, informe seu nome.');
+      setValidationError('Por favor, informe seu nome.');
       return;
     }
     if (!customerPhone.trim()) {
-      alert('Por favor, informe seu WhatsApp para envio do status do pedido.');
+      setValidationError('Por favor, informe seu WhatsApp para envio do status do pedido.');
       return;
     }
     if (orderType === 'delivery' && (!street.trim() || !number.trim() || !neighborhood.trim())) {
-      alert('Por favor, preencha rua, número e bairro para a entrega.');
+      setValidationError('Por favor, preencha rua, número e bairro para a entrega.');
       return;
     }
     if (orderType === 'mesa' && !tableNumber.trim()) {
-      alert('Por favor, informe o número da mesa.');
+      setValidationError('Por favor, informe o número da mesa.');
       return;
     }
 
@@ -118,14 +121,14 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
 
     onCreateOrder(newOrder);
     setCompletedOrder(newOrder);
-    setStep('success');
 
     // Build WhatsApp URL
     const msg = buildWhatsAppOrderMessage(newOrder, settings);
     const cleanPhone = settings.whatsappNumber.replace(/\D/g, '');
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
+    setWhatsAppUrl(waUrl);
 
+    setStep('success');
     onClearCart();
   };
 
@@ -352,6 +355,13 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
           {/* STEP 2: CHECKOUT DETAILS & MODERN PAYMENT */}
           {step === 'checkout' && (
             <div className="space-y-6">
+              {validationError && (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{validationError}</span>
+                </div>
+              )}
+
               {/* Customer Details */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -815,6 +825,18 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
                   <span className="text-amber-700 tabular-nums font-heading">{formatBRL(completedOrder.total)}</span>
                 </div>
               </div>
+
+              {whatsAppUrl && (
+                <a
+                  href={whatsAppUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all active:scale-98 cursor-pointer"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>Abrir Pedido no WhatsApp da Pastelaria</span>
+                </a>
+              )}
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <button

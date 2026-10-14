@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { MenuItem, ExtraOption, StoreSettings, Order, CartItem, OrderStatus } from './types';
+import { MenuItem, ExtraOption, StoreSettings, Order, CartItem, OrderStatus, PaymentMethod } from './types';
 import {
   INITIAL_MENU_ITEMS,
   INITIAL_EXTRAS,
@@ -17,11 +17,11 @@ import { CustomizeModal } from './components/CustomizeModal';
 import { CartCheckoutModal } from './components/CartCheckoutModal';
 import { CustomerOrderTracker } from './components/CustomerOrderTracker';
 import { KitchenKanban } from './components/KitchenKanban';
+import { WaiterOrderPad } from './components/WaiterOrderPad';
 import { PosTerminal } from './components/PosTerminal';
 import { MenuEditor } from './components/MenuEditor';
 import { FinancialReports } from './components/FinancialReports';
 import { StoreSettingsView } from './components/StoreSettingsView';
-import { SpringBootIntegration } from './components/SpringBootIntegration';
 import { ThermalReceipt } from './components/ThermalReceipt';
 import { LoginModal } from './components/LoginModal';
 import { QrCodeCard } from './components/QrCodeCard';
@@ -62,7 +62,7 @@ export default function App() {
 
   // UI Navigation states
   const [mode, setMode] = useState<'cliente' | 'gestao'>('cliente');
-  const [gestaoTab, setGestaoTab] = useState<'kds' | 'pos' | 'menu' | 'financeiro' | 'config' | 'api'>('kds');
+  const [gestaoTab, setGestaoTab] = useState<'kds' | 'comandas' | 'pos' | 'menu' | 'financeiro' | 'config'>('kds');
   const [clienteTab, setClienteTab] = useState<'menu' | 'tracking'>('menu');
 
   // Modal states
@@ -70,6 +70,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
@@ -216,7 +217,7 @@ export default function App() {
     api.updateOrderStatus(orderId, newStatus);
   };
 
-  // POS Direct Order Handlers
+  // POS & Waiter Order Handlers
   const handlePosOrderCreated = (order: Order, printImmediately: boolean) => {
     setOrders((prev) => [order, ...prev]);
     api.createOrder(order);
@@ -224,8 +225,59 @@ export default function App() {
       setPrintOrder(order);
       setTimeout(() => {
         window.print();
+        setTimeout(() => setPrintOrder(null), 1000);
       }, 150);
     }
+  };
+
+  const handleAppendItemsToOrder = (orderId: string, newItems: CartItem[], printImmediately: boolean) => {
+    setOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id !== orderId) return ord;
+        const updatedItems = [...ord.items, ...newItems];
+        const addedSubtotal = newItems.reduce((acc, it) => acc + it.totalPrice, 0);
+        const updatedTotal = ord.total + addedSubtotal;
+        const updatedOrder: Order = {
+          ...ord,
+          items: updatedItems,
+          subtotal: ord.subtotal + addedSubtotal,
+          total: updatedTotal,
+          status: 'em_preparo',
+          updatedAt: new Date().toISOString(),
+        };
+        api.createOrder(updatedOrder);
+        if (printImmediately) {
+          setPrintOrder(updatedOrder);
+          setTimeout(() => {
+            window.print();
+            setTimeout(() => setPrintOrder(null), 1000);
+          }, 150);
+        }
+        return updatedOrder;
+      })
+    );
+  };
+
+  const handleCloseAccount = (orderId: string, paymentMethod: PaymentMethod, changeFor?: number) => {
+    setOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id !== orderId) return ord;
+        const updated: Order = {
+          ...ord,
+          status: 'entregue',
+          paymentMethod,
+          needChangeFor: changeFor,
+          updatedAt: new Date().toISOString(),
+        };
+        api.updateOrderStatus(orderId, 'entregue');
+        return updated;
+      })
+    );
+  };
+
+  const handleManualPrintOrder = (order: Order) => {
+    setPrintOrder(order);
+    setIsReceiptModalOpen(true);
   };
 
   // Menu Management Handlers
@@ -301,8 +353,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900">
-      {/* Hidden printable receipt for thermal printer */}
-      <ThermalReceipt order={printOrder} settings={settings} />
+      {/* Printable receipt for thermal printer & optional preview modal */}
+      <ThermalReceipt
+        order={printOrder}
+        settings={settings}
+        isOpen={isReceiptModalOpen}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setPrintOrder(null);
+        }}
+      />
 
       {/* Top Bar Navigation */}
       <HeaderNav
@@ -418,7 +478,19 @@ export default function App() {
                     orders={orders}
                     settings={settings}
                     onUpdateStatus={handleUpdateOrderStatus}
-                    onSelectPrintOrder={(o) => setPrintOrder(o)}
+                    onSelectPrintOrder={handleManualPrintOrder}
+                  />
+                )}
+
+                {gestaoTab === 'comandas' && (
+                  <WaiterOrderPad
+                    menuItems={menuItems}
+                    settings={settings}
+                    orders={orders}
+                    onOrderCreated={handlePosOrderCreated}
+                    onAppendItemsToOrder={handleAppendItemsToOrder}
+                    onCloseAccount={handleCloseAccount}
+                    onPrintReceipt={handleManualPrintOrder}
                   />
                 )}
 
@@ -450,8 +522,6 @@ export default function App() {
                     onSaveSettings={handleSaveSettings}
                   />
                 )}
-
-                {gestaoTab === 'api' && <SpringBootIntegration />}
               </div>
             )}
           </>

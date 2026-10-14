@@ -1,22 +1,25 @@
-# Estagio 1: Build do Spring Boot com Maven
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Production Dockerfile for Node.js Express server + React PWA
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copia pom.xml e resolve dependencias
-COPY backend-spring-boot/pom.xml .
-RUN mvn dependency:go-offline -B
+COPY package*.json ./
+RUN npm install
 
-# Copia codigo fonte e compila o pacote JAR
-COPY backend-spring-boot/src ./src
-RUN mvn clean package -DskipTests
+COPY . .
+RUN npm run build
 
-# Estagio 2: Runtime leve com JRE 17
-FROM eclipse-temurin:17-jre-jammy
+FROM node:20-alpine AS runner
 WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
 
-COPY --from=build /app/target/*.jar app.jar
+COPY package*.json ./
+RUN npm install --omit=dev
 
-ENV PORT=8080
-EXPOSE 8080
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/server-db.js ./server-db.js
 
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
+EXPOSE 3000
+
+CMD ["npm", "start"]

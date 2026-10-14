@@ -88,3 +88,14 @@ export interface StoreSettings {
   minOrderValue: number;
   instagram?: string;
 }
+
+export type UserRole = 'ADMIN' | 'GERENTE' | 'ATENDENTE';
+
+export interface AppUser {
+  id: string;
+  name: string;
+  username: string;
+  password?: string;
+  role: UserRole;
+  createdAt: string;
+}

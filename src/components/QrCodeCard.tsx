@@ -94,7 +94,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({ settings, isOpen, onClos
           </div>
 
           {/* Printable Display Card Preview */}
-          <div className="p-6 rounded-2xl bg-gradient-to-b from-stone-50 to-amber-50/50 border-2 border-stone-200 text-center space-y-4">
+          <div id="qr-print-tent" className="p-6 rounded-2xl bg-gradient-to-b from-stone-50 to-amber-50/50 border-2 border-stone-200 text-center space-y-4">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-widest text-amber-700">
                 {selectedTable === 'geral' ? 'Balcão / Instagram' : `Display da ${selectedTable}`}

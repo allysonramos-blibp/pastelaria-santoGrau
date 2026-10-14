@@ -1,19 +1,13 @@
 services:
   - type: web
-    name: pastelaria-backend-api
-    runtime: docker
-    rootDir: backend-spring-boot
-    dockerfilePath: ./Dockerfile
+    name: pastelaria-santo-grau
+    runtime: node
     plan: free
     region: ohio
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: SPRING_DATASOURCE_URL
-        value: jdbc:postgresql://ep-curly-cloud-b5keor3y-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require
-      - key: SPRING_DATASOURCE_USERNAME
-        value: neondb_owner
-      - key: SPRING_DATASOURCE_PASSWORD
-        value: npg_TwvgO8qDR7BL
-      - key: PORT
-        value: 8080
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false

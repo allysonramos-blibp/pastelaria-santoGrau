@@ -1,7 +1,23 @@
-import React, { useState } from 'react';
-import { StoreSettings } from '../types';
-import { formatBRL } from '../utils/format';
-import { Save, Store, QrCode, Printer, Check, Bell } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { StoreSettings, AppUser, UserRole } from '../types';
+import { authService } from '../services/auth';
+import { formatBRL, formatDateTime } from '../utils/format';
+import {
+  Save,
+  Store,
+  QrCode,
+  Printer,
+  Check,
+  Bell,
+  Users,
+  UserPlus,
+  Trash2,
+  Crown,
+  Briefcase,
+  Smartphone,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 
 interface StoreSettingsViewProps {
   settings: StoreSettings;
@@ -16,11 +32,59 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
+  // Team & User Management State
+  const [teamUsers, setTeamUsers] = useState<AppUser[]>(() => authService.getRegisteredUsers());
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<UserRole>('ADMIN');
+  const [teamMessage, setTeamMessage] = useState<{ text: string; error?: boolean } | null>(null);
+
+  useEffect(() => {
+    authService.fetchUsersFromServer().then((users) => {
+      if (users && users.length > 0) setTeamUsers(users);
+    });
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveSettings(form);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
+  };
+
+  const handleCreateTeamMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTeamMessage(null);
+
+    const res = await authService.register({
+      name: newName,
+      username: newUsername,
+      password: newPassword,
+      role: newRole,
+    });
+
+    if (res.success) {
+      setTeamUsers(authService.getRegisteredUsers());
+      setNewName('');
+      setNewUsername('');
+      setNewPassword('');
+      setShowAddUser(false);
+      setTeamMessage({ text: `Conta de ${newName} criada com sucesso!` });
+      setTimeout(() => setTeamMessage(null), 3000);
+    } else {
+      setTeamMessage({ text: res.message || 'Erro ao criar conta.', error: true });
+    }
+  };
+
+  const handleDeleteTeamMember = async (userId: string, name: string) => {
+    if (confirm(`Tem certeza que deseja remover o acesso de ${name}?`)) {
+      await authService.deleteUser(userId);
+      setTeamUsers(authService.getRegisteredUsers());
+      setTeamMessage({ text: `Acesso de ${name} removido.` });
+      setTimeout(() => setTeamMessage(null), 3000);
+    }
   };
 
   return (
@@ -242,6 +306,232 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
         </div>
       </form>
 
+      {/* TEAM & USER ACCOUNTS SECTION */}
+      <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 rounded-xl bg-amber-500 text-white">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-stone-900">
+                Equipe & Contas de Acesso (ADM & Gerência)
+              </h3>
+              <p className="text-xs text-stone-500">
+                Gerencie quem pode acessar o sistema da pastelaria no celular ou computador
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAddUser(!showAddUser)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
+          >
+            {showAddUser ? <X className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5 text-amber-400" />}
+            <span>{showAddUser ? 'Cancelar' : 'Cadastrar Membro da Equipe'}</span>
+          </button>
+        </div>
+
+        {teamMessage && (
+          <div
+            className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+              teamMessage.error
+                ? 'bg-red-50 text-red-800 border border-red-200'
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+            }`}
+          >
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{teamMessage.text}</span>
+          </div>
+        )}
+
+        {/* Form to add a team member (Sister, Manager, Attendant) */}
+        {showAddUser && (
+          <form
+            onSubmit={handleCreateTeamMember}
+            className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-4 animate-in fade-in"
+          >
+            <div className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-amber-700" />
+              <span>Novo Cadastro de Acesso (Ex: Sua Irmã, Sócia ou Atendente)</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">Nome Completo</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ex: Minha Irmã (Camila)"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-stone-300 font-medium"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">Usuário para Login</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                  placeholder="Ex: irma, camila"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-stone-300 font-medium"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-stone-700 mb-1">Senha de Acesso</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-stone-300 font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <label className="block font-bold text-stone-700">Cargo & Nível de Permissão:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewRole('ADMIN')}
+                  className={`p-2.5 rounded-xl border text-left flex items-start gap-2 cursor-pointer transition-all ${
+                    newRole === 'ADMIN'
+                      ? 'border-amber-600 bg-white ring-2 ring-amber-500 shadow-xs'
+                      : 'border-stone-200 bg-white hover:bg-stone-50'
+                  }`}
+                >
+                  <Crown className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-stone-900">👑 Administradora (ADM)</div>
+                    <div className="text-[10px] text-stone-500 leading-tight">Acesso total (igual a você)</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewRole('GERENTE')}
+                  className={`p-2.5 rounded-xl border text-left flex items-start gap-2 cursor-pointer transition-all ${
+                    newRole === 'GERENTE'
+                      ? 'border-amber-600 bg-white ring-2 ring-amber-500 shadow-xs'
+                      : 'border-stone-200 bg-white hover:bg-stone-50'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-stone-900">💼 Gerente</div>
+                    <div className="text-[10px] text-stone-500 leading-tight">Cozinha, comandas, caixa e cardápio</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewRole('ATENDENTE')}
+                  className={`p-2.5 rounded-xl border text-left flex items-start gap-2 cursor-pointer transition-all ${
+                    newRole === 'ATENDENTE'
+                      ? 'border-amber-600 bg-white ring-2 ring-amber-500 shadow-xs'
+                      : 'border-stone-200 bg-white hover:bg-stone-50'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-stone-900">📱 Atendente / Garçom</div>
+                    <div className="text-[10px] text-stone-500 leading-tight">Comandas por nome e caixa de balcão</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAddUser(false)}
+                className="px-4 py-2 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+              >
+                Criar Conta do Membro
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Team Members List */}
+        <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 overflow-hidden">
+          {teamUsers.map((u) => {
+            const isRootAdmin = u.username === 'admin';
+            return (
+              <div
+                key={u.id}
+                className="p-4 bg-white hover:bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                      u.role === 'ADMIN'
+                        ? 'bg-amber-100 text-amber-800'
+                        : u.role === 'GERENTE'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {u.role === 'ADMIN' ? '👑' : u.role === 'GERENTE' ? '💼' : '📱'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-stone-900">{u.name}</span>
+                      <span
+                        className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                          u.role === 'ADMIN'
+                            ? 'bg-amber-100 text-amber-800'
+                            : u.role === 'GERENTE'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {u.role === 'ADMIN' && 'Administrador (ADM)'}
+                        {u.role === 'GERENTE' && 'Gerente'}
+                        {u.role === 'ATENDENTE' && 'Atendente / Garçom'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-stone-500 font-mono mt-0.5">
+                      Usuário: <span className="font-semibold text-stone-700">@{u.username}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                  {isRootAdmin ? (
+                    <span className="text-[11px] font-semibold text-stone-400 bg-stone-100 px-2.5 py-1 rounded-lg">
+                      Conta Principal
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTeamMember(u.id, u.name)}
+                      className="p-2 text-stone-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                      title="Remover acesso deste usuário"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* QR Code Modal for Tables */}
       {showQrModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs">
@@ -253,7 +543,7 @@ export const StoreSettingsView: React.FC<StoreSettingsViewProps> = ({
               Coloque nas mesas ou no balcão da pastelaria para os clientes acessarem o cardápio no celular.
             </p>
 
-            <div className="p-6 bg-amber-50 rounded-2xl border-2 border-dashed border-amber-300 flex flex-col items-center">
+            <div id="qr-print-tent" className="p-6 bg-amber-50 rounded-2xl border-2 border-dashed border-amber-300 flex flex-col items-center">
               {/* Simulated crisp QR code representation */}
               <div className="w-44 h-44 bg-white p-3 rounded-xl shadow-xs border border-stone-200 flex flex-col items-center justify-center">
                 <svg viewBox="0 0 100 100" className="w-full h-full text-stone-900" fill="currentColor">

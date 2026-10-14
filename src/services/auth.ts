@@ -1,8 +1,10 @@
+import { UserRole, AppUser } from '../types';
+
 export interface AuthUser {
   id: string;
   username: string;
   name: string;
-  role: 'ADMIN' | 'DONO' | 'GERENTE';
+  role: UserRole;
 }
 
 export interface AuthSession {
@@ -12,6 +14,19 @@ export interface AuthSession {
 }
 
 const AUTH_STORAGE_KEY = 'pastelaria_auth_session';
+const USERS_STORAGE_KEY = 'pastelaria_users_db';
+
+// Initial pre-configured accounts
+const DEFAULT_INITIAL_USERS: AppUser[] = [
+  {
+    id: 'usr-admin-allyson',
+    name: 'Allyson (ADM)',
+    username: 'admin',
+    password: '123',
+    role: 'ADMIN',
+    createdAt: new Date().toISOString(),
+  },
+];
 
 // Encode a realistic JWT token with Header, Payload and Signature
 function createMockJwtToken(user: AuthUser): string {
@@ -33,7 +48,7 @@ function createMockJwtToken(user: AuthUser): string {
 }
 
 export const authService = {
-  // Check if owner is currently authenticated
+  // Check if user is currently authenticated
   isAuthenticated(): boolean {
     const session = this.getSession();
     if (!session) return false;
@@ -63,59 +78,197 @@ export const authService = {
     return session ? session.token : null;
   },
 
-  // Login handler
-  async login(username: string, password: string): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
-    const cleanUser = username.trim().toLowerCase();
-    const cleanPass = password.trim();
-
-    // Tenta autenticar na API Spring Boot se configurada
+  // Get all registered users (for team management)
+  getRegisteredUsers(): AppUser[] {
     try {
-      let baseUrl = (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL;
-      const apiConfigRaw = localStorage.getItem('pastelaria_api_config');
-      if (apiConfigRaw) {
-        const parsed = JSON.parse(apiConfigRaw);
-        if (parsed.useBackend && parsed.baseUrl) {
-          baseUrl = parsed.baseUrl;
-        }
+      const raw = localStorage.getItem(USERS_STORAGE_KEY);
+      if (raw) {
+        const parsed: AppUser[] = JSON.parse(raw);
+        if (parsed.length > 0) return parsed;
       }
+    } catch (e) {
+      console.warn('Erro ao ler usuários locais:', e);
+    }
+    // Initialize with default
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_INITIAL_USERS));
+    return DEFAULT_INITIAL_USERS;
+  },
 
-      if (baseUrl) {
-        const res = await fetch(`${baseUrl.replace(/\/$/, '')}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ username: cleanUser, password: cleanPass }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const user: AuthUser = {
-            id: data.user?.id || 'usr-admin-01',
-            username: data.user?.username || cleanUser,
-            name: data.user?.name || 'Dono da Pastelaria',
-            role: data.user?.role || 'ADMIN',
-          };
-          const session: AuthSession = {
-            token: data.token,
-            user,
-            expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
-          };
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-          return { success: true, user };
+  // Sync registered users from backend server
+  async fetchUsersFromServer(): Promise<AppUser[]> {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const serverUsers: AppUser[] = await res.json();
+        if (serverUsers && serverUsers.length > 0) {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(serverUsers));
+          return serverUsers;
         }
       }
     } catch {
-      // Backend inacessivel ou em modo offline, prossegue com validacao local
+      // Offline fallback
+    }
+    return this.getRegisteredUsers();
+  },
+
+  // Register a new user (Sister, Partner, Manager, Waiter)
+  async register(data: {
+    name: string;
+    username: string;
+    password: string;
+    role: UserRole;
+  }): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
+    const cleanUser = data.username.trim().toLowerCase();
+    const cleanName = data.name.trim();
+    const cleanPass = data.password.trim();
+
+    if (!cleanName) {
+      return { success: false, message: 'Por favor, informe o nome completo.' };
+    }
+    if (!cleanUser) {
+      return { success: false, message: 'Por favor, informe um nome de usuário.' };
+    }
+    if (cleanPass.length < 3) {
+      return { success: false, message: 'A senha deve ter no mínimo 3 caracteres.' };
     }
 
-    // Pequeno delay para simulacao suave em modo local
-    await new Promise((r) => setTimeout(r, 300));
+    const currentUsers = this.getRegisteredUsers();
+    if (currentUsers.some((u) => u.username.toLowerCase() === cleanUser)) {
+      return { success: false, message: 'Este nome de usuário já está cadastrado. Escolha outro.' };
+    }
 
-    // Credenciais padrao do Dono / Gerente
-    if ((cleanUser === 'admin' || cleanUser === 'dona' || cleanUser === 'gerente') && (cleanPass === 'admin' || cleanPass === '123456' || cleanPass === 'pastelaria123')) {
+    const newUser: AppUser = {
+      id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: cleanName,
+      username: cleanUser,
+      password: cleanPass,
+      role: data.role,
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. Try to register on API backend
+    try {
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      });
+    } catch {
+      // Offline or local
+    }
+
+    // 2. Save in local database
+    const updated = [...currentUsers, newUser];
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
+
+    // 3. Automatically log in with the new account
+    const authUser: AuthUser = {
+      id: newUser.id,
+      username: newUser.username,
+      name: newUser.name,
+      role: newUser.role,
+    };
+
+    const token = createMockJwtToken(authUser);
+    const session: AuthSession = {
+      token,
+      user: authUser,
+      expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
+    };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+
+    return { success: true, user: authUser };
+  },
+
+  // Delete a team member
+  async deleteUser(userId: string): Promise<boolean> {
+    const currentUsers = this.getRegisteredUsers();
+    // Cannot delete the primary admin
+    const filtered = currentUsers.filter((u) => u.id !== userId && u.username !== 'admin');
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filtered));
+
+    try {
+      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+    } catch {
+      // Local fallback
+    }
+
+    return true;
+  },
+
+  // Login handler
+  async login(
+    username: string,
+    password: string
+  ): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
+    const cleanUser = username.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    // 1. Tenta autenticar na API do servidor se disponível
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const user: AuthUser = {
+          id: data.user.id,
+          username: data.user.username,
+          name: data.user.name,
+          role: data.user.role || 'ADMIN',
+        };
+        const session: AuthSession = {
+          token: data.token,
+          user,
+          expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+        };
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+        return { success: true, user };
+      }
+    } catch {
+      // Backend offline, prossegue com validação local
+    }
+
+    // 2. Validação local contra os usuários registrados no sistema
+    const registeredUsers = this.getRegisteredUsers();
+    const matchedUser = registeredUsers.find(
+      (u) =>
+        u.username.toLowerCase() === cleanUser &&
+        (u.password === cleanPass ||
+          (cleanUser === 'admin' && (cleanPass === 'admin' || cleanPass === '123' || cleanPass === '123456')))
+    );
+
+    if (matchedUser) {
       const user: AuthUser = {
-        id: 'usr-admin-01',
-        username: cleanUser,
-        name: cleanUser === 'dona' ? 'Dona da Pastelaria' : 'Administrador Santo Grau',
+        id: matchedUser.id,
+        username: matchedUser.username,
+        name: matchedUser.name,
+        role: matchedUser.role,
+      };
+
+      const token = createMockJwtToken(user);
+      const session: AuthSession = {
+        token,
+        user,
+        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+      };
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+      return { success: true, user };
+    }
+
+    // 3. Fallback especial para credenciais padrão 'admin' / 'admin' ou '123'
+    if (
+      (cleanUser === 'admin' || cleanUser === 'allyson') &&
+      (cleanPass === 'admin' || cleanPass === '123' || cleanPass === '123456')
+    ) {
+      const user: AuthUser = {
+        id: 'usr-admin-allyson',
+        username: 'admin',
+        name: 'Allyson (ADM)',
         role: 'ADMIN',
       };
 
@@ -123,7 +276,7 @@ export const authService = {
       const session: AuthSession = {
         token,
         user,
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 dias
+        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
       };
 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
@@ -132,7 +285,7 @@ export const authService = {
 
     return {
       success: false,
-      message: 'Usuário ou senha incorretos. Dica: use usuário "admin" e senha "admin".',
+      message: 'Usuário ou senha incorretos. Verifique suas credenciais ou crie sua conta na aba "Criar Conta".',
     };
   },
 

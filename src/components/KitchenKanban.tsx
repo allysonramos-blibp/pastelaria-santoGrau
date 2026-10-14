@@ -174,8 +174,9 @@ export const KitchenKanban: React.FC<KitchenKanbanProps> = ({
                               {order.orderType === 'retirada' && '🛍️ Balcão'}
                             </span>
                           </div>
-                          <div className="text-xs font-semibold text-stone-800 mt-0.5">
-                            {order.customerName}
+                          <div className="flex items-center gap-1.5 text-xs font-black text-amber-950 bg-amber-100/70 px-2 py-0.5 rounded-lg mt-1 border border-amber-300">
+                            <span className="text-[10px] text-amber-800 uppercase font-bold">Cliente:</span>
+                            <span className="truncate">{order.customerName}</span>
                           </div>
                         </div>
 

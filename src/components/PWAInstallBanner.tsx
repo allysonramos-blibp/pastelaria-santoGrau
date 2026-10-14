@@ -35,7 +35,7 @@ export const PWAInstallBanner: React.FC = () => {
 
   return (
     <>
-      <aside aria-label="Instalação do Aplicativo" className="fixed bottom-4 inset-x-3 sm:inset-x-auto sm:right-6 sm:max-w-sm z-40 animate-in fade-in slide-in-from-bottom-3 duration-200">
+      <aside aria-label="Instalação do Aplicativo" className="fixed bottom-20 sm:bottom-6 inset-x-3 sm:inset-x-auto sm:right-6 sm:max-w-sm z-40 animate-in fade-in slide-in-from-bottom-3 duration-200">
         <div className="bg-stone-900/95 backdrop-blur-md text-white rounded-2xl p-3.5 shadow-2xl border border-stone-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-10 h-10 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-sm">

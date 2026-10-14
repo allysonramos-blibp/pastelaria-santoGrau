@@ -6,9 +6,9 @@ import { ShoppingBag, Utensils, Lock, LogOut, QrCode, ShieldCheck } from 'lucide
 
 interface HeaderNavProps {
   currentMode: 'cliente' | 'gestao';
-  gestaoSubTab: 'kds' | 'pos' | 'menu' | 'financeiro' | 'config' | 'api';
+  gestaoSubTab: 'kds' | 'comandas' | 'pos' | 'menu' | 'financeiro' | 'config';
   onSelectMode: (mode: 'cliente' | 'gestao') => void;
-  onSelectGestaoTab: (tab: 'kds' | 'pos' | 'menu' | 'financeiro' | 'config' | 'api') => void;
+  onSelectGestaoTab: (tab: 'kds' | 'comandas' | 'pos' | 'menu' | 'financeiro' | 'config') => void;
   onSelectClienteTab: (tab: 'menu' | 'tracking') => void;
   activeClientTab: 'menu' | 'tracking';
   cartCount: number;
@@ -92,6 +92,16 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               </button>
               <button
                 type="button"
+                onClick={() => onSelectGestaoTab('comandas')}
+                className={`whitespace-nowrap shrink-0 hover:text-stone-900 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  gestaoSubTab === 'comandas' ? 'text-amber-700 font-bold' : ''
+                }`}
+              >
+                <span>Comandas (Nome)</span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded-md font-bold">Rápido</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => onSelectGestaoTab('pos')}
                 className={`whitespace-nowrap shrink-0 hover:text-stone-900 transition-colors cursor-pointer ${
                   gestaoSubTab === 'pos' ? 'text-amber-700 font-bold' : ''
@@ -125,15 +135,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 }`}
               >
                 Configurações
-              </button>
-              <button
-                type="button"
-                onClick={() => onSelectGestaoTab('api')}
-                className={`whitespace-nowrap shrink-0 hover:text-stone-900 transition-colors cursor-pointer ${
-                  gestaoSubTab === 'api' ? 'text-amber-700 font-bold' : ''
-                }`}
-              >
-                API Spring Boot
               </button>
             </>
           )}
@@ -173,9 +174,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{currentUser?.name || 'Dono'}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 text-amber-950 border border-amber-200 text-xs font-bold shadow-xs">
+                <span>{currentUser?.role === 'ADMIN' ? '👑' : currentUser?.role === 'GERENTE' ? '💼' : '📱'}</span>
+                <span className="truncate max-w-[120px] sm:max-w-none">{currentUser?.name || 'Dono'}</span>
               </div>
 
               <button
@@ -239,6 +240,14 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               Cozinha
             </button>
             <button
+              onClick={() => onSelectGestaoTab('comandas')}
+              className={`px-2.5 py-1 rounded-lg shrink-0 ${
+                gestaoSubTab === 'comandas' ? 'bg-amber-600 text-white font-bold' : 'text-stone-600'
+              }`}
+            >
+              Comandas (Nome)
+            </button>
+            <button
               onClick={() => onSelectGestaoTab('pos')}
               className={`px-2.5 py-1 rounded-lg shrink-0 ${
                 gestaoSubTab === 'pos' ? 'bg-amber-600 text-white font-bold' : 'text-stone-600'
@@ -269,14 +278,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               }`}
             >
               Config
-            </button>
-            <button
-              onClick={() => onSelectGestaoTab('api')}
-              className={`px-2.5 py-1 rounded-lg shrink-0 ${
-                gestaoSubTab === 'api' ? 'bg-amber-600 text-white font-bold' : 'text-stone-600'
-              }`}
-            >
-              API Java
             </button>
           </>
         )}

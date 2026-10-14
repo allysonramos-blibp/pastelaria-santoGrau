@@ -89,6 +89,50 @@ app.patch('/api/orders/:id/status', (req, res) => {
   res.json({ success: ok });
 });
 
+// Users & Authentication API
+app.get('/api/users', (_req, res) => {
+  res.json(serverDb.getUsers());
+});
+
+app.post('/api/users', (req, res) => {
+  const { name, username, password, role } = req.body;
+  if (!name || !username) {
+    return res.status(400).json({ error: 'Nome e usuário são obrigatórios.' });
+  }
+  const cleanUsername = username.trim().toLowerCase();
+  const existing = serverDb.getUsers().find((u) => u.username.toLowerCase() === cleanUsername);
+  if (existing) {
+    return res.status(409).json({ error: 'Este nome de usuário já está em uso.' });
+  }
+  const newUser = {
+    id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name: name.trim(),
+    username: cleanUsername,
+    password: password || '123',
+    role: role || 'GERENTE',
+    createdAt: new Date().toISOString(),
+  };
+  const saved = serverDb.saveUser(newUser);
+  res.status(201).json(saved);
+});
+
+app.delete('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  const ok = serverDb.deleteUser(id);
+  res.json({ success: ok });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = serverDb.getUserByCredentials(username, password);
+  if (!user) {
+    return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+  }
+  // Realistic JWT mock for secure session
+  const token = `jwt-${Buffer.from(JSON.stringify({ sub: user.username, role: user.role, time: Date.now() })).toString('base64')}`;
+  res.json({ success: true, token, user });
+});
+
 // Full Multi-Device Sync Bundle
 app.get('/api/sync', (_req, res) => {
   res.json(serverDb.getSyncBundle());
