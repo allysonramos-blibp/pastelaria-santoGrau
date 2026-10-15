@@ -145,6 +145,14 @@
       "password": "123",
       "role": "ADMIN",
       "createdAt": "2026-10-15T21:14:32.103Z"
+    },
+    {
+      "id": "usr-alessandra-ramos",
+      "name": "Alessandra Ramos",
+      "username": "alessandraramos",
+      "password": "2308",
+      "role": "GERENTE",
+      "createdAt": "2026-10-15T23:06:56.205Z"
     }
   ]
 }
