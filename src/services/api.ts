@@ -187,6 +187,31 @@ export const api = {
     return fallback.filter((item) => !localDeleted.has(item.id));
   },
 
+  async saveProductsBulk(products: MenuItem[]): Promise<MenuItem[]> {
+    const config = getApiConfig();
+    try {
+      const res = await fetch(`${config.baseUrl}/products/bulk`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(products),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const savedList: MenuItem[] = data.products || products;
+        savedList.forEach((prod) => {
+          broadcastChannel?.postMessage({ type: 'PRODUCT_SAVED', product: prod });
+        });
+        return savedList;
+      }
+    } catch (e) {
+      console.warn('Erro ao salvar produtos em lote na API:', e);
+    }
+    products.forEach((prod) => {
+      broadcastChannel?.postMessage({ type: 'PRODUCT_SAVED', product: prod });
+    });
+    return products;
+  },
+
   async saveProduct(product: MenuItem): Promise<MenuItem> {
     const config = getApiConfig();
     try {

@@ -51,6 +51,12 @@ app.put('/api/products/:id', (req, res) => {
   res.json(saved);
 });
 
+app.post('/api/products/bulk', (req, res) => {
+  const list = Array.isArray(req.body) ? req.body : (req.body?.items || []);
+  const saved = serverDb.saveProductsBulk(list);
+  res.json({ success: true, count: saved.length, products: saved });
+});
+
 app.delete('/api/products/:id', (req, res) => {
   const { id } = req.params;
   const ok = serverDb.deleteProduct(id);

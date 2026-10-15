@@ -472,7 +472,18 @@
       ]
     }
   ],
-  "deletedProductIds": [],
+  "deletedProductIds": [
+    "item-1792098874456-xmv7d"
+  ],
   "orders": [],
-  "users": []
+  "users": [
+    {
+      "id": "usr-admin-allyson",
+      "name": "Allyson (ADM)",
+      "username": "admin",
+      "password": "123",
+      "role": "ADMIN",
+      "createdAt": "2026-10-15T21:14:32.103Z"
+    }
+  ]
 }

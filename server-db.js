@@ -136,6 +136,43 @@ export const serverDb = {
     return db.deletedProductIds || [];
   },
 
+  saveProductsBulk(productsList) {
+    const db = readDb();
+    if (!db.products) db.products = [];
+    if (!db.deletedProductIds) db.deletedProductIds = [];
+
+    const saved = [];
+    for (const item of (Array.isArray(productsList) ? productsList : [])) {
+      if (!item || !item.name) continue;
+      const product = {
+        id: item.id || ('item-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7)),
+        name: String(item.name).trim(),
+        description: item.description ? String(item.description).trim() : '',
+        category: item.category || 'salgados',
+        price: Number(item.price) || 0,
+        available: item.available !== undefined ? Boolean(item.available) : true,
+        ingredients: Array.isArray(item.ingredients) 
+          ? item.ingredients 
+          : (typeof item.ingredients === 'string' && item.ingredients.trim() ? item.ingredients.split(',').map(s => s.trim()).filter(Boolean) : undefined),
+        isPopular: Boolean(item.isPopular),
+        badge: item.badge ? String(item.badge).trim() : undefined,
+        sizeOptions: Array.isArray(item.sizeOptions) ? item.sizeOptions : undefined,
+      };
+
+      db.deletedProductIds = db.deletedProductIds.filter((id) => id !== product.id);
+      const idx = db.products.findIndex((p) => p.id === product.id || p.name.toLowerCase() === product.name.toLowerCase());
+      if (idx >= 0) {
+        db.products[idx] = { ...db.products[idx], ...product };
+        saved.push(db.products[idx]);
+      } else {
+        db.products.push(product);
+        saved.push(product);
+      }
+    }
+    writeDb(db);
+    return saved;
+  },
+
   saveProduct(product) {
     const db = readDb();
     if (!db.products) db.products = [];

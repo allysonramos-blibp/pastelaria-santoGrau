@@ -294,6 +294,22 @@ export default function App() {
     api.saveProduct(item);
   };
 
+  const handleBulkSaveMenuItems = (newItems: MenuItem[]) => {
+    setMenuItems((prev) => {
+      const copy = [...prev];
+      newItems.forEach((item) => {
+        const idx = copy.findIndex((i) => i.id === item.id || i.name.toLowerCase() === item.name.toLowerCase());
+        if (idx >= 0) {
+          copy[idx] = item;
+        } else {
+          copy.push(item);
+        }
+      });
+      return copy;
+    });
+    api.saveProductsBulk(newItems);
+  };
+
   const handleDeleteMenuItem = (itemId: string) => {
     saveLocalDeletedId(itemId);
     setMenuItems((prev) => prev.filter((i) => i.id !== itemId));
@@ -507,6 +523,7 @@ export default function App() {
                     menuItems={menuItems}
                     extras={extras}
                     onSaveItem={handleSaveMenuItem}
+                    onBulkSaveItems={handleBulkSaveMenuItems}
                     onDeleteItem={handleDeleteMenuItem}
                     onToggleAvailability={handleToggleItemAvailability}
                     onSaveExtra={handleSaveExtra}

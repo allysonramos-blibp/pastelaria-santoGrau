@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MenuItem, ExtraOption, ProductCategory } from '../types';
 import { formatBRL } from '../utils/format';
-import { Plus, Edit2, Trash2, Check, X, ShieldAlert, Sparkles } from 'lucide-react';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  ShieldAlert,
+  Sparkles,
+  Download,
+  Upload,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Copy,
+} from 'lucide-react';
 
 interface MenuEditorProps {
   menuItems: MenuItem[];
   extras: ExtraOption[];
   onSaveItem: (item: MenuItem) => void;
+  onBulkSaveItems?: (items: MenuItem[]) => void;
   onDeleteItem: (itemId: string) => void;
   onToggleAvailability: (itemId: string) => void;
   onSaveExtra: (extra: ExtraOption) => void;
@@ -17,6 +32,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   menuItems,
   extras,
   onSaveItem,
+  onBulkSaveItems,
   onDeleteItem,
   onToggleAvailability,
   onSaveExtra,
@@ -25,6 +41,16 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   const [activeTab, setActiveTab] = useState<'items' | 'extras'>('items');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // Bulk Insert Modal State
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState<'text' | 'json'>('text');
+  const [bulkText, setBulkText] = useState('');
+  const [bulkDefaultCategory, setBulkDefaultCategory] = useState<ProductCategory>('salgados');
+  const [bulkAddGiant, setBulkAddGiant] = useState(true);
+  const [bulkGiantDelta, setBulkGiantDelta] = useState('6.00');
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   // Form states for item
   const [name, setName] = useState('');
@@ -41,6 +67,176 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   const [extraName, setExtraName] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
   const [extraCategory, setExtraCategory] = useState<ExtraOption['category']>('recheio');
+
+  // Smart Parser for Bulk Text
+  const parsedBulkItems = useMemo<MenuItem[]>(() => {
+    if (!bulkText.trim()) return [];
+
+    if (bulkMode === 'json') {
+      try {
+        const parsed = JSON.parse(bulkText);
+        const list = Array.isArray(parsed) ? parsed : parsed.products || parsed.items || [];
+        return list.map((it: any, idx: number) => ({
+          id: it.id || `item-bulk-${Date.now()}-${idx}`,
+          name: String(it.name || '').trim(),
+          description: String(it.description || '').trim(),
+          category: (it.category || bulkDefaultCategory) as ProductCategory,
+          price: Number(it.price) || 0,
+          available: it.available !== undefined ? Boolean(it.available) : true,
+          badge: it.badge ? String(it.badge).trim() : undefined,
+          ingredients: Array.isArray(it.ingredients)
+            ? it.ingredients
+            : typeof it.ingredients === 'string' && it.ingredients.trim()
+            ? it.ingredients.split(',').map((s: string) => s.trim()).filter(Boolean)
+            : undefined,
+          sizeOptions: it.sizeOptions || (bulkAddGiant && (it.category === 'salgados' || it.category === 'especiais')
+            ? [
+                { name: 'Médio (20cm)', priceDelta: 0 },
+                { name: 'Gigante (30cm)', priceDelta: parseFloat(bulkGiantDelta) || 6 },
+              ]
+            : undefined),
+        })).filter((it: MenuItem) => it.name.length > 0);
+      } catch {
+        return [];
+      }
+    }
+
+    // Text parsing mode (line by line)
+    const lines = bulkText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const items: MenuItem[] = [];
+
+    lines.forEach((line, index) => {
+      // Ignore comment or header lines
+      if (line.startsWith('#') || line.startsWith('//') || line.toLowerCase().startsWith('cardapio') || line.toLowerCase().startsWith('cardápio')) {
+        return;
+      }
+
+      // Try pipe separation: Name | Price | Category | Description/Ingredients
+      if (line.includes('|')) {
+        const parts = line.split('|').map((p) => p.trim());
+        const itemName = parts[0] || '';
+        const itemPrice = parseFloat((parts[1] || '0').replace('R$', '').replace('$', '').replace(',', '.').trim()) || 0;
+        let itemCat: ProductCategory = bulkDefaultCategory;
+        if (parts[2]) {
+          const catNorm = parts[2].toLowerCase();
+          if (['salgados', 'especiais', 'doces', 'combos', 'bebidas', 'porcoes'].includes(catNorm)) {
+            itemCat = catNorm as ProductCategory;
+          }
+        }
+        const descOrIng = parts[3] || '';
+        if (itemName) {
+          items.push({
+            id: `item-bulk-${Date.now()}-${index}`,
+            name: itemName,
+            description: descOrIng,
+            category: itemCat,
+            price: itemPrice,
+            available: true,
+            ingredients: descOrIng ? descOrIng.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+            sizeOptions: bulkAddGiant && (itemCat === 'salgados' || itemCat === 'especiais')
+              ? [
+                  { name: 'Médio (20cm)', priceDelta: 0 },
+                  { name: 'Gigante (30cm)', priceDelta: parseFloat(bulkGiantDelta) || 6 },
+                ]
+              : undefined,
+          });
+        }
+        return;
+      }
+
+      // Match price in line like "R$ 15,00", "15.00", "15,50"
+      const priceRegex = /(?:R\$\s*|BRL\s*)?(\d{1,3}(?:[.,]\d{1,2})?)/i;
+      const priceMatch = line.match(priceRegex);
+      let detectedPrice = 0;
+      let cleanLine = line;
+
+      if (priceMatch) {
+        detectedPrice = parseFloat(priceMatch[1].replace(',', '.'));
+        cleanLine = line.replace(priceMatch[0], '').trim();
+      }
+
+      // Remove separator hyphens or bullets
+      cleanLine = cleanLine.replace(/^[-*•–—\d.)]+\s*/, '').replace(/[-–—]\s*$/, '').trim();
+
+      // Split name and description if separator exists
+      const sepMatch = cleanLine.split(/[-–—:]/);
+      let itemName = cleanLine;
+      let itemDesc = '';
+
+      if (sepMatch.length > 1) {
+        itemName = sepMatch[0].trim();
+        itemDesc = sepMatch.slice(1).join(' ').trim();
+      }
+
+      if (!itemName) return;
+
+      // Smart category detection based on name keywords
+      let detectedCategory: ProductCategory = bulkDefaultCategory;
+      const lower = (itemName + ' ' + itemDesc).toLowerCase();
+
+      if (/(camar[aã]o|carne seca|costela|quatro queijos|gourmet|picanha|bacon cheddar|fil[eé])/i.test(lower)) {
+        detectedCategory = 'especiais';
+      } else if (/(nutella|chocolate|morango|banana|romeu|leite ninho|doce de leite|churros|doce)/i.test(lower)) {
+        detectedCategory = 'doces';
+      } else if (/(coca|guaran[aá]|suco|caldo de cana|refrigerante|cerveja|agua|água|bebida|refri|lata|fanta|sprite)/i.test(lower)) {
+        detectedCategory = 'bebidas';
+      } else if (/(por[cç][aã]o|fritas|batata|mandioca|mini past[eé]is|petisco)/i.test(lower)) {
+        detectedCategory = 'porcoes';
+      } else if (/(combo|promoc|promo)/i.test(lower)) {
+        detectedCategory = 'combos';
+      }
+
+      items.push({
+        id: `item-bulk-${Date.now()}-${index}`,
+        name: itemName,
+        description: itemDesc,
+        category: detectedCategory,
+        price: detectedPrice,
+        available: true,
+        ingredients: itemDesc ? itemDesc.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+        sizeOptions: bulkAddGiant && (detectedCategory === 'salgados' || detectedCategory === 'especiais')
+          ? [
+              { name: 'Médio (20cm)', priceDelta: 0 },
+              { name: 'Gigante (30cm)', priceDelta: parseFloat(bulkGiantDelta) || 6 },
+            ]
+          : undefined,
+      });
+    });
+
+    return items;
+  }, [bulkText, bulkMode, bulkDefaultCategory, bulkAddGiant, bulkGiantDelta]);
+
+  const handleExecuteBulkInsert = () => {
+    if (parsedBulkItems.length === 0) {
+      setBulkError('Nenhum item válido identificado para inserção.');
+      return;
+    }
+
+    if (onBulkSaveItems) {
+      onBulkSaveItems(parsedBulkItems);
+    } else {
+      parsedBulkItems.forEach((it) => onSaveItem(it));
+    }
+
+    setBulkSuccessMsg(`🎉 ${parsedBulkItems.length} itens inseridos com sucesso no cardápio!`);
+    setBulkError(null);
+
+    setTimeout(() => {
+      setIsBulkModalOpen(false);
+      setBulkSuccessMsg(null);
+      setBulkText('');
+    }, 1800);
+  };
+
+  const handleExportMenuJson = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(menuItems, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `cardapio-santograu-${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
 
   const openCreateModal = () => {
     setEditingItem(null);
@@ -126,7 +322,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header & Subtabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
         <div>
           <h2 className="text-lg font-bold font-heading text-stone-900">
             Cardápio & Ingredientes
@@ -136,7 +332,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-semibold">
             <button
               onClick={() => setActiveTab('items')}
@@ -157,13 +353,39 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
           </div>
 
           {activeTab === 'items' && (
-            <button
-              onClick={openCreateModal}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Novo Pastel</span>
-            </button>
+            <>
+              {/* Inserção em Massa Button */}
+              <button
+                onClick={() => {
+                  setBulkError(null);
+                  setBulkSuccessMsg(null);
+                  setIsBulkModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs shadow-xs cursor-pointer transition-colors"
+                title="Inserir múltiplos itens de uma só vez"
+              >
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>Inserir em Massa</span>
+              </button>
+
+              {/* Novo Pastel Button */}
+              <button
+                onClick={openCreateModal}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Novo Pastel</span>
+              </button>
+
+              {/* Exportar JSON */}
+              <button
+                onClick={handleExportMenuJson}
+                className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl border border-stone-200 cursor-pointer transition-colors"
+                title="Exportar Cardápio em JSON"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -243,11 +465,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Tem certeza que deseja remover ${item.name}?`)) {
-                              onDeleteItem(item.id);
-                            }
-                          }}
+                          onClick={() => onDeleteItem(item.id)}
                           className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
                           title="Excluir"
                         >
@@ -265,14 +483,15 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
       {/* EXTRAS LIST */}
       {activeTab === 'extras' && (
-        <div className="space-y-4">
-          {/* Add / Edit Extra Form */}
-          <form
-            onSubmit={handleSaveExtraSubmit}
-            className="bg-white p-4 rounded-2xl border border-stone-200 flex flex-wrap items-end gap-3 text-xs"
-          >
-            <div className="flex-1 min-w-[180px]">
-              <label className="block font-semibold text-stone-700 mb-1">
+        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
+            <h3 className="font-bold text-sm text-stone-800">
+              {editingExtra ? 'Editar Adicional' : 'Cadastrar Adicional'}
+            </h3>
+          </div>
+          <form onSubmit={handleSaveExtraSubmit} className="p-4 bg-stone-50/50 border-b border-stone-200 flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
                 Nome do Adicional
               </label>
               <input
@@ -280,14 +499,13 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 value={extraName}
                 onChange={(e) => setExtraName(e.target.value)}
                 placeholder="Ex: Bacon Crocante, Catupiry..."
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-stone-300 text-xs bg-white"
                 required
               />
             </div>
-
-            <div className="w-28">
-              <label className="block font-semibold text-stone-700 mb-1">
-                Preço (+R$)
+            <div className="w-32">
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                Preço (R$)
               </label>
               <input
                 type="number"
@@ -295,33 +513,31 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 value={extraPrice}
                 onChange={(e) => setExtraPrice(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full px-3 py-1.5 rounded-xl border border-stone-300 text-xs bg-white"
                 required
               />
             </div>
-
             <div className="w-36">
-              <label className="block font-semibold text-stone-700 mb-1">
+              <label className="block text-xs font-semibold text-stone-700 mb-1">
                 Tipo
               </label>
               <select
                 value={extraCategory}
                 onChange={(e) => setExtraCategory(e.target.value as ExtraOption['category'])}
-                className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                className="w-full px-3 py-1.5 rounded-xl border border-stone-300 text-xs bg-white"
               >
                 <option value="recheio">Recheio Extra</option>
                 <option value="molho">Molho / Acompanhamento</option>
                 <option value="massa">Tipo de Massa</option>
+                <option value="borda">Borda</option>
               </select>
             </div>
-
             <button
               type="submit"
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl cursor-pointer"
+              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold cursor-pointer"
             >
-              {editingExtra ? 'Salvar Alteração' : 'Adicionar Ingrediente'}
+              {editingExtra ? 'Atualizar' : 'Adicionar'}
             </button>
-
             {editingExtra && (
               <button
                 type="button"
@@ -330,29 +546,28 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                   setExtraName('');
                   setExtraPrice('');
                 }}
-                className="px-3 py-2 border border-stone-300 text-stone-600 rounded-xl cursor-pointer"
+                className="px-3 py-1.5 border border-stone-300 text-stone-600 rounded-xl text-xs font-semibold hover:bg-stone-100 cursor-pointer"
               >
                 Cancelar
               </button>
             )}
           </form>
 
-          {/* Table of Extras */}
-          <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 font-semibold uppercase text-[11px]">
-                  <th className="py-3 px-4">Ingrediente / Adicional</th>
+                <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-4">Nome</th>
                   <th className="py-3 px-4">Categoria</th>
-                  <th className="py-3 px-4 text-right">Valor Adicional</th>
+                  <th className="py-3 px-4 text-right">Preço Adicional</th>
                   <th className="py-3 px-4 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {extras.map((extra) => (
-                  <tr key={extra.id} className="hover:bg-stone-50/70">
+                  <tr key={extra.id} className="hover:bg-stone-50/70 transition-colors">
                     <td className="py-3 px-4 font-bold text-stone-900">{extra.name}</td>
-                    <td className="py-3 px-4 uppercase text-stone-600 text-[11px]">
+                    <td className="py-3 px-4 uppercase text-stone-500 font-medium text-[11px]">
                       {extra.category}
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-stone-900 tabular-nums">
@@ -389,7 +604,200 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
         </div>
       )}
 
-      {/* CREATE / EDIT PRODUCT MODAL */}
+      {/* MODAL INSERÇÃO EM MASSA (BULK INSERT) */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl p-6 space-y-4 my-auto max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold font-heading text-stone-900">
+                    Inserção em Massa no Cardápio
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Cole sua lista ou cardápio completo para cadastrar todos os itens de uma só vez
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 cursor-pointer p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Mode selection */}
+            <div className="flex items-center justify-between bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setBulkMode('text')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    bulkMode === 'text' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                  }`}
+                >
+                  Modo Lista / Texto Rápido
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkMode('json')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    bulkMode === 'json' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                  }`}
+                >
+                  Modo JSON
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-stone-600 pr-2">
+                <span>Categoria padrão:</span>
+                <select
+                  value={bulkDefaultCategory}
+                  onChange={(e) => setBulkDefaultCategory(e.target.value as ProductCategory)}
+                  className="bg-white border border-stone-300 rounded-md px-2 py-0.5 text-xs text-stone-800 focus:outline-none"
+                >
+                  <option value="salgados">Salgados</option>
+                  <option value="especiais">Especiais</option>
+                  <option value="doces">Doces</option>
+                  <option value="bebidas">Bebidas</option>
+                  <option value="porcoes">Porções</option>
+                  <option value="combos">Combos</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Helper tips */}
+            {bulkMode === 'text' && (
+              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5" />
+                  Formatos aceitos automaticamente (um item por linha):
+                </div>
+                <div className="text-amber-800 font-mono text-[10.5px] pl-4 space-y-0.5">
+                  <div>• Pastel de Carne - R$ 14,00 - Carne moída, ovo, azeitona</div>
+                  <div>• Pastel de Queijo Especial | 13.00 | salgados</div>
+                  <div>• Pastel de Nutella com Morango - R$ 16,50</div>
+                  <div>• Caldo de Cana 500ml - R$ 8,00</div>
+                </div>
+              </div>
+            )}
+
+            {/* Textarea */}
+            <div className="flex-1 min-h-[140px] flex flex-col">
+              <textarea
+                value={bulkText}
+                onChange={(e) => {
+                  setBulkText(e.target.value);
+                  setBulkError(null);
+                }}
+                rows={6}
+                placeholder={
+                  bulkMode === 'text'
+                    ? 'Cole aqui os itens do cardápio...\n\nPastel de Carne - R$ 14,00 - Carne moída de primeira e azeitonas\nPastel de Queijo Especial - R$ 13,00\nPastel de Nutella com Morango - R$ 16,50\nCaldo de Cana 500ml - R$ 8,00'
+                    : '[\n  { "name": "Pastel de Carne", "price": 14, "category": "salgados" }\n]'
+                }
+                className="w-full flex-1 p-3 rounded-xl border border-stone-300 font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none bg-stone-50/30"
+              />
+            </div>
+
+            {/* Quick Options */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs border-t border-stone-100 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer font-medium text-stone-700">
+                <input
+                  type="checkbox"
+                  checked={bulkAddGiant}
+                  onChange={(e) => setBulkAddGiant(e.target.checked)}
+                  className="rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                />
+                <span>Adicionar opção Gigante (30cm) para pastéis (+R$</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={bulkGiantDelta}
+                  onChange={(e) => setBulkGiantDelta(e.target.value)}
+                  className="w-14 px-1.5 py-0.5 border border-stone-300 rounded text-xs text-center"
+                />
+                <span>)</span>
+              </label>
+
+              <div className="text-xs font-bold text-stone-600">
+                Detectados: <span className="text-amber-600 font-extrabold">{parsedBulkItems.length} itens</span>
+              </div>
+            </div>
+
+            {/* Live Preview List */}
+            {parsedBulkItems.length > 0 && (
+              <div className="max-h-48 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 bg-stone-50/50">
+                <div className="px-3 py-1.5 bg-stone-100 font-bold text-[11px] text-stone-700 flex justify-between items-center">
+                  <span>Pré-visualização dos itens a serem inseridos:</span>
+                  <span className="text-stone-500">{parsedBulkItems.length} prontos</span>
+                </div>
+                {parsedBulkItems.map((it, idx) => (
+                  <div key={idx} className="px-3 py-2 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 flex-1 truncate pr-2">
+                      <span className="font-bold text-stone-900 truncate">{it.name}</span>
+                      <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-stone-200 text-stone-700">
+                        {it.category}
+                      </span>
+                      {it.description && (
+                        <span className="text-[11px] text-stone-400 truncate max-w-[200px]">
+                          {it.description}
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-bold text-amber-700 tabular-nums">
+                      {formatBRL(it.price)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error & Success Messages */}
+            {bulkError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{bulkError}</span>
+              </div>
+            )}
+
+            {bulkSuccessMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{bulkSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 border-t border-stone-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setIsBulkModalOpen(false)}
+                className="px-4 py-2 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 font-semibold cursor-pointer text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={parsedBulkItems.length === 0}
+                onClick={handleExecuteBulkInsert}
+                className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl cursor-pointer text-xs shadow-xs transition-colors"
+              >
+                <Check className="w-4 h-4" />
+                <span>
+                  Inserir Todos no Cardápio ({parsedBulkItems.length} itens)
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE / EDIT SINGLE PRODUCT MODAL */}
       {isCreatingNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl p-6 space-y-4 my-auto">
