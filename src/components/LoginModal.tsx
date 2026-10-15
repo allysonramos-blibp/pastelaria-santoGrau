@@ -213,9 +213,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
             {/* Quick user selection */}
             {registeredUsers.length > 0 && (
-              <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-1.5">
-                <div className="text-[11px] font-semibold text-stone-500">
-                  Ou clique para preencher sua conta:
+              <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 space-y-1.5">
+                <div className="text-[11px] font-bold text-amber-900 flex items-center justify-between">
+                  <span>Toque na sua conta para entrar direto:</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {registeredUsers.map((u) => (
@@ -223,10 +223,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                       key={u.id}
                       type="button"
                       onClick={() => {
-                        setUsername(u.username);
-                        setPassword(u.password || '123');
+                        const targetUser = u.username;
+                        const targetPass = u.password || '123';
+                        setUsername(targetUser);
+                        setPassword(targetPass);
+                        authService.login(targetUser, targetPass).then((res) => {
+                          if (res.success && res.user) {
+                            onLoginSuccess(res.user);
+                            onClose();
+                          }
+                        });
                       }}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-white border border-stone-200 hover:border-amber-400 text-stone-700 font-medium flex items-center gap-1 cursor-pointer"
+                      className="text-xs px-2.5 py-1.5 rounded-xl bg-white border border-amber-300 hover:border-amber-500 hover:bg-amber-100/50 text-stone-900 font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 transition-all"
                     >
                       <span>
                         {u.role === 'ADMIN' ? '👑' : u.role === 'GERENTE' ? '💼' : '📱'}
