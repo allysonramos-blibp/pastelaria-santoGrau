@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Copy,
+  RefreshCw,
 } from 'lucide-react';
 
 interface MenuEditorProps {
@@ -26,6 +27,8 @@ interface MenuEditorProps {
   onToggleAvailability: (itemId: string) => void;
   onSaveExtra: (extra: ExtraOption) => void;
   onDeleteExtra: (extraId: string) => void;
+  onRefreshSync?: () => void;
+  syncStatus?: 'synced' | 'syncing' | 'offline';
 }
 
 export const MenuEditor: React.FC<MenuEditorProps> = ({
@@ -37,6 +40,8 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   onToggleAvailability,
   onSaveExtra,
   onDeleteExtra,
+  onRefreshSync,
+  syncStatus = 'synced',
 }) => {
   const [activeTab, setActiveTab] = useState<'items' | 'extras'>('items');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -144,28 +149,42 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
         return;
       }
 
-      // Match price in line like "R$ 15,00", "15.00", "15,50"
-      const priceRegex = /(?:R\$\s*|BRL\s*)?(\d{1,3}(?:[.,]\d{1,2})?)/i;
-      const priceMatch = line.match(priceRegex);
-      let detectedPrice = 0;
-      let cleanLine = line;
+      // 1. Remove leading bullets and numbering like '1. ', '01 - ', '• ', '-'
+      let cleanLine = line.replace(/^(\d{1,3}[.)\-]\s*|[•*\-–—]\s*)/, '').trim();
 
-      if (priceMatch) {
-        detectedPrice = parseFloat(priceMatch[1].replace(',', '.'));
-        cleanLine = line.replace(priceMatch[0], '').trim();
+      let detectedPrice = 0;
+
+      // 2. Try explicit R$ or BRL: e.g. ' - R$ 14,00' or 'R$ 14,00' or 'R$14'
+      const rDollarMatch = cleanLine.match(/(?:[-–—:]\s*)?(?:R\$|BRL)\s*(\d{1,3}(?:[.,]\d{1,2})?)/i);
+      if (rDollarMatch && rDollarMatch.index !== undefined) {
+        detectedPrice = parseFloat(rDollarMatch[1].replace(',', '.'));
+        cleanLine = (cleanLine.substring(0, rDollarMatch.index) + ' ' + cleanLine.substring(rDollarMatch.index + rDollarMatch[0].length)).trim();
+      } else {
+        // End of line price: '... - 14,00' or '... 14.50'
+        const endPriceMatch = cleanLine.match(/(?:[-–—:]\s*|\s+)(\d{1,3}(?:[.,]\d{1,2})?)\s*$/);
+        if (endPriceMatch && endPriceMatch.index !== undefined) {
+          detectedPrice = parseFloat(endPriceMatch[1].replace(',', '.'));
+          cleanLine = cleanLine.substring(0, endPriceMatch.index).trim();
+        } else {
+          // Decimal price anywhere: e.g. 15,50
+          const decMatch = cleanLine.match(/\b(\d{1,3}[.,]\d{2})\b/);
+          if (decMatch && decMatch.index !== undefined) {
+            detectedPrice = parseFloat(decMatch[1].replace(',', '.'));
+            cleanLine = (cleanLine.substring(0, decMatch.index) + ' ' + cleanLine.substring(decMatch.index + decMatch[0].length)).trim();
+          }
+        }
       }
 
-      // Remove separator hyphens or bullets
-      cleanLine = cleanLine.replace(/^[-*•–—\d.)]+\s*/, '').replace(/[-–—]\s*$/, '').trim();
+      // Clean double spaces and leading/trailing separators
+      cleanLine = cleanLine.replace(/\s{2,}/g, ' ').replace(/^[-–—:]\s*/, '').replace(/[-–—:]\s*$/, '').trim();
 
-      // Split name and description if separator exists
-      const sepMatch = cleanLine.split(/[-–—:]/);
+      // Split name and description: look for ' - ' (hyphen with spaces) or ' : '
       let itemName = cleanLine;
       let itemDesc = '';
-
-      if (sepMatch.length > 1) {
-        itemName = sepMatch[0].trim();
-        itemDesc = sepMatch.slice(1).join(' ').trim();
+      const sepIdx = cleanLine.search(/\s+[-–—:]\s+/);
+      if (sepIdx !== -1) {
+        itemName = cleanLine.substring(0, sepIdx).trim();
+        itemDesc = cleanLine.substring(sepIdx).replace(/^[\s-–—:]+/, '').trim();
       }
 
       if (!itemName) return;
@@ -333,10 +352,10 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+          <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('items')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center ${
                 activeTab === 'items' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
               }`}
             >
@@ -344,48 +363,64 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('extras')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center ${
                 activeTab === 'extras' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
               }`}
             >
-              Adicionais & Recheios ({extras.length})
+              Adicionais ({extras.length})
             </button>
           </div>
 
           {activeTab === 'items' && (
-            <>
+            <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-end">
+              {/* Sincronizar Agora */}
+              {onRefreshSync && (
+                <button
+                  type="button"
+                  onClick={onRefreshSync}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer transition-colors active:scale-95"
+                  title="Sincronizar com o banco de dados agora"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncStatus === 'syncing' ? 'animate-spin text-amber-600' : 'text-stone-500'}`} />
+                  <span className="hidden xs:inline">Sincronizar</span>
+                </button>
+              )}
+
               {/* Inserção em Massa Button */}
               <button
+                type="button"
                 onClick={() => {
                   setBulkError(null);
                   setBulkSuccessMsg(null);
                   setIsBulkModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs shadow-xs cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
                 title="Inserir múltiplos itens de uma só vez"
               >
-                <Sparkles className="w-4 h-4 text-amber-600" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                 <span>Inserir em Massa</span>
               </button>
 
               {/* Novo Pastel Button */}
               <button
+                type="button"
                 onClick={openCreateModal}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
               >
-                <Plus className="w-4 h-4" />
-                <span>Novo Pastel</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Novo</span>
               </button>
 
               {/* Exportar JSON */}
               <button
+                type="button"
                 onClick={handleExportMenuJson}
-                className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl border border-stone-200 cursor-pointer transition-colors"
+                className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl border border-stone-200 cursor-pointer transition-colors"
                 title="Exportar Cardápio em JSON"
               >
                 <Download className="w-4 h-4" />
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -393,7 +428,79 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
       {/* ITEMS LIST */}
       {activeTab === 'items' && (
         <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
+          {/* Mobile Card List (< md) */}
+          <div className="md:hidden divide-y divide-stone-100">
+            {menuItems.length === 0 ? (
+              <div className="p-8 text-center text-stone-500 text-xs">
+                Nenhum produto cadastrado no cardápio.
+              </div>
+            ) : (
+              menuItems.map((item) => (
+                <div key={item.id} className="p-3.5 space-y-2.5 hover:bg-stone-50/50 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-stone-900 text-sm leading-snug">{item.name}</span>
+                        {item.badge && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                          {item.category}
+                        </span>
+                        <span className="font-black text-amber-700 text-sm tabular-nums">
+                          {formatBRL(item.price)}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <p className="text-stone-500 text-xs mt-1 line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-stone-100">
+                    <button
+                      type="button"
+                      onClick={() => onToggleAvailability(item.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                        item.available
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'bg-red-50 text-red-800 border border-red-200'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${item.available ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                      <span>{item.available ? 'Disponível' : 'Esgotado'}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        onClick={() => onDeleteItem(item.id)}
+                        className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl cursor-pointer"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -553,7 +660,57 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
             )}
           </form>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card List (< md) */}
+          <div className="md:hidden divide-y divide-stone-100">
+            {extras.length === 0 ? (
+              <div className="p-8 text-center text-stone-500 text-xs">
+                Nenhum adicional cadastrado.
+              </div>
+            ) : (
+              extras.map((extra) => (
+                <div key={extra.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-stone-50/50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-stone-900 text-sm truncate">{extra.name}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-600">
+                        {extra.category}
+                      </span>
+                      <span className="font-extrabold text-amber-700 text-xs tabular-nums">
+                        {extra.price === 0 ? 'Grátis' : formatBRL(extra.price)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingExtra(extra);
+                        setExtraName(extra.name);
+                        setExtraPrice(extra.price.toString());
+                        setExtraCategory(extra.category);
+                      }}
+                      className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteExtra(extra.id)}
+                      className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl cursor-pointer"
+                      title="Remover"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -606,8 +763,8 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
       {/* MODAL INSERÇÃO EM MASSA (BULK INSERT) */}
       {isBulkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl p-6 space-y-4 my-auto max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl p-4 sm:p-6 space-y-3 sm:space-y-4 my-auto max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
@@ -618,7 +775,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                     Inserção em Massa no Cardápio
                   </h3>
                   <p className="text-xs text-stone-500">
-                    Cole sua lista ou cardápio completo para cadastrar todos os itens de uma só vez
+                    Cole sua lista de itens para cadastrar tudo de uma vez
                   </p>
                 </div>
               </div>
@@ -630,9 +787,9 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
               </button>
             </div>
 
-            {/* Mode selection */}
-            <div className="flex items-center justify-between bg-stone-100 p-1 rounded-xl text-xs font-semibold">
-              <div className="flex gap-1">
+            {/* Mode selection + Quick Sample */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setBulkMode('text')}
@@ -640,7 +797,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                     bulkMode === 'text' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
                   }`}
                 >
-                  Modo Lista / Texto Rápido
+                  Lista Rápida
                 </button>
                 <button
                   type="button"
@@ -653,12 +810,30 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 text-[11px] text-stone-600 pr-2">
-                <span>Categoria padrão:</span>
+              <div className="flex items-center gap-2 text-[11px] text-stone-600 pr-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkMode('text');
+                    setBulkText(
+                      'Pastel de Carne Tradicional - R$ 14,00 - Carne moída de primeira, ovo e azeitonas\n' +
+                      'Pastel de Queijo Especial - R$ 13,00 - Mussarela selecionada e orégano\n' +
+                      'Pastel 4 Queijos Especial - R$ 17,00 - Mussarela, provolone, parmesão e catupiry\n' +
+                      'Pastel de Nutella com Morango - R$ 16,50 - Nutella pura e morangos frescos\n' +
+                      'Caldo de Cana Gelado 500ml - R$ 8,00\n' +
+                      'Coca-Cola Lata 350ml - R$ 6,00\n' +
+                      'Porção de Mini Pastéis (12 un) - R$ 28,00'
+                    );
+                  }}
+                  className="px-2 py-0.5 rounded-md bg-white border border-stone-200 text-amber-700 font-bold hover:bg-amber-50 cursor-pointer"
+                >
+                  Colar Exemplo
+                </button>
+                <span>Categoria:</span>
                 <select
                   value={bulkDefaultCategory}
                   onChange={(e) => setBulkDefaultCategory(e.target.value as ProductCategory)}
-                  className="bg-white border border-stone-300 rounded-md px-2 py-0.5 text-xs text-stone-800 focus:outline-none"
+                  className="bg-white border border-stone-300 rounded-md px-1.5 py-0.5 text-xs text-stone-800 focus:outline-none"
                 >
                   <option value="salgados">Salgados</option>
                   <option value="especiais">Especiais</option>
@@ -799,15 +974,15 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
       {/* CREATE / EDIT SINGLE PRODUCT MODAL */}
       {isCreatingNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl p-6 space-y-4 my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl p-4 sm:p-6 space-y-4 my-auto max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <h3 className="text-lg font-bold font-heading text-stone-900">
                 {editingItem ? 'Editar Produto' : 'Cadastrar Novo Pastel / Produto'}
               </h3>
               <button
                 onClick={() => setIsCreatingNew(false)}
-                className="text-stone-400 hover:text-stone-700 cursor-pointer"
+                className="text-stone-400 hover:text-stone-700 cursor-pointer p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -928,17 +1103,17 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+              <div className="sticky bottom-0 bg-white flex items-center justify-end gap-2 pt-3 border-t border-stone-100 z-10">
                 <button
                   type="button"
                   onClick={() => setIsCreatingNew(false)}
-                  className="px-4 py-2 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 font-semibold cursor-pointer"
+                  className="px-4 py-2 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 font-semibold cursor-pointer text-xs"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl cursor-pointer"
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl cursor-pointer text-xs shadow-xs"
                 >
                   Salvar Produto
                 </button>

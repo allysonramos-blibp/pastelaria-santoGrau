@@ -27,7 +27,7 @@ import { LoginModal } from './components/LoginModal';
 import { QrCodeCard } from './components/QrCodeCard';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playChimeSound } from './utils/sound';
-import { api, getLocalDeletedIds, saveLocalDeletedId } from './services/api';
+import { api, getLocalDeletedIds, saveLocalDeletedId, unmarkLocalDeletedId } from './services/api';
 import { authService, AuthUser } from './services/auth';
 import { RotateCcw, Heart, Lock, ShieldAlert, Wifi, RefreshCw } from 'lucide-react';
 
@@ -281,7 +281,8 @@ export default function App() {
   };
 
   // Menu Management Handlers
-  const handleSaveMenuItem = (item: MenuItem) => {
+  const handleSaveMenuItem = async (item: MenuItem) => {
+    unmarkLocalDeletedId(item.id);
     setMenuItems((prev) => {
       const idx = prev.findIndex((i) => i.id === item.id);
       if (idx >= 0) {
@@ -291,10 +292,18 @@ export default function App() {
       }
       return [...prev, item];
     });
-    api.saveProduct(item);
+    try {
+      await api.saveProduct(item);
+      await refreshSync();
+    } catch (e) {
+      console.warn('Erro ao salvar produto:', e);
+    }
   };
 
-  const handleBulkSaveMenuItems = (newItems: MenuItem[]) => {
+  const handleBulkSaveMenuItems = async (newItems: MenuItem[]) => {
+    newItems.forEach((it) => {
+      if (it.id) unmarkLocalDeletedId(it.id);
+    });
     setMenuItems((prev) => {
       const copy = [...prev];
       newItems.forEach((item) => {
@@ -307,7 +316,12 @@ export default function App() {
       });
       return copy;
     });
-    api.saveProductsBulk(newItems);
+    try {
+      await api.saveProductsBulk(newItems);
+      await refreshSync();
+    } catch (e) {
+      console.warn('Erro ao salvar produtos em massa:', e);
+    }
   };
 
   const handleDeleteMenuItem = (itemId: string) => {
@@ -368,7 +382,7 @@ export default function App() {
   const currentTrackingOrder = orders.find((o) => o.id === trackingOrderId) || orders[0];
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900">
+    <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900 w-full overflow-x-hidden">
       {/* Printable receipt for thermal printer & optional preview modal */}
       <ThermalReceipt
         order={printOrder}
@@ -416,7 +430,7 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
         {/* CUSTOMER MODE (100% Free - No login required for customers!) */}
         {mode === 'cliente' && (
           <>
@@ -528,6 +542,8 @@ export default function App() {
                     onToggleAvailability={handleToggleItemAvailability}
                     onSaveExtra={handleSaveExtra}
                     onDeleteExtra={handleDeleteExtra}
+                    onRefreshSync={refreshSync}
+                    syncStatus={syncStatus}
                   />
                 )}
 

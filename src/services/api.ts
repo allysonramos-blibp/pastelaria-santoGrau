@@ -46,6 +46,15 @@ export function saveLocalDeletedId(productId: string): void {
   }
 }
 
+export function unmarkLocalDeletedId(productId: string): void {
+  try {
+    const current = getLocalDeletedIds().filter((id) => id !== productId);
+    localStorage.setItem('pastelaria_deleted_ids', JSON.stringify(current));
+  } catch (e) {
+    console.warn('Erro ao desmarcar ID deletado:', e);
+  }
+}
+
 export function getApiConfig(): ApiConfig {
   const envUrl = (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL;
   const saved = localStorage.getItem('pastelaria_api_config');
@@ -188,6 +197,9 @@ export const api = {
   },
 
   async saveProductsBulk(products: MenuItem[]): Promise<MenuItem[]> {
+    products.forEach((p) => {
+      if (p.id) unmarkLocalDeletedId(p.id);
+    });
     const config = getApiConfig();
     try {
       const res = await fetch(`${config.baseUrl}/products/bulk`, {
@@ -199,6 +211,7 @@ export const api = {
         const data = await res.json();
         const savedList: MenuItem[] = data.products || products;
         savedList.forEach((prod) => {
+          unmarkLocalDeletedId(prod.id);
           broadcastChannel?.postMessage({ type: 'PRODUCT_SAVED', product: prod });
         });
         return savedList;
@@ -213,6 +226,7 @@ export const api = {
   },
 
   async saveProduct(product: MenuItem): Promise<MenuItem> {
+    if (product.id) unmarkLocalDeletedId(product.id);
     const config = getApiConfig();
     try {
       const method = product.id.startsWith('item-') ? 'POST' : 'PUT';
@@ -224,6 +238,7 @@ export const api = {
       });
       if (res.ok) {
         const saved = await res.json();
+        unmarkLocalDeletedId(saved.id);
         broadcastChannel?.postMessage({ type: 'PRODUCT_SAVED', product: saved });
         return saved;
       }

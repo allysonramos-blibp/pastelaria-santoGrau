@@ -54,59 +54,59 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
   return (
     <div className="space-y-8 pb-28">
       {/* Modern Gastronomic Hero Showcase Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-600 via-amber-700 to-stone-900 text-white p-6 sm:p-10 shadow-xl border border-amber-500/20">
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-amber-600 via-amber-700 to-stone-900 text-white p-4 sm:p-10 shadow-xl border border-amber-500/20">
         {/* Subtle decorative circles */}
         <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-amber-400/25 blur-3xl pointer-events-none" />
         <div className="absolute -left-16 -bottom-16 w-72 h-72 rounded-full bg-orange-500/25 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-amber-200 uppercase tracking-wider">
-            <span className="flex items-center gap-1 bg-amber-500/30 backdrop-blur-xs px-2.5 py-1 rounded-full border border-amber-300/30">
-              <Flame className="w-3.5 h-3.5 text-amber-300" />
+        <div className="relative z-10 max-w-2xl space-y-3 sm:space-y-4">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold text-amber-200 uppercase tracking-wider">
+            <span className="flex items-center gap-1 bg-amber-500/30 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-amber-300/30">
+              <Flame className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-amber-300" />
               <span>Frito na Hora</span>
             </span>
             <span className="hidden sm:inline" aria-hidden="true">·</span>
-            <span className="bg-white/10 backdrop-blur-xs px-2.5 py-1 rounded-full">Massa Fresca Todo Dia</span>
+            <span className="bg-white/10 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">Massa Fresca Todo Dia</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black font-heading tracking-tight leading-tight text-white text-balance">
+          <h1 className="text-2xl sm:text-5xl font-black font-heading tracking-tight leading-tight text-white text-balance">
             {settings.storeName}
           </h1>
 
-          <p className="text-sm sm:text-base text-amber-100/90 leading-relaxed max-w-xl">
+          <p className="text-xs sm:text-base text-amber-100/90 leading-relaxed max-w-xl">
             {settings.slogan}
           </p>
 
           {/* Quick Info Grid */}
-          <div className="pt-2 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs sm:text-sm text-stone-200">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-amber-300 shrink-0" />
+          <div className="pt-1 sm:pt-2 flex flex-wrap items-center gap-y-1.5 gap-x-3 sm:gap-x-4 text-xs sm:text-sm text-stone-200">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span>{settings.openingHours}</span>
             </div>
             <span aria-hidden="true" className="text-amber-400/60 hidden sm:inline">·</span>
-            <div className="flex items-center gap-1.5">
-              <Bike className="w-4 h-4 text-amber-300 shrink-0" />
+            <div className="flex items-center gap-1">
+              <Bike className="w-3.5 h-3.5 text-amber-300 shrink-0" />
               <span>Entrega ({formatBRL(settings.defaultDeliveryFee)})</span>
             </div>
             <span aria-hidden="true" className="text-amber-400/60 hidden sm:inline">·</span>
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-amber-300 shrink-0" />
-              <span>{settings.address}</span>
+            <div className="flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span className="truncate max-w-[200px] sm:max-w-none">{settings.address}</span>
             </div>
           </div>
         </div>
 
         {/* Floating badge for active orders */}
         {activeOrderCount > 0 && onViewOrderTracking && (
-          <div className="mt-6 pt-4 border-t border-white/15 flex items-center justify-between">
+          <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-white/15 flex items-center justify-between gap-2">
             <div className="text-xs text-amber-200 font-medium">
               Você tem {activeOrderCount} pedido(s) em andamento!
             </div>
             <button
               onClick={onViewOrderTracking}
-              className="px-3.5 py-1.5 bg-white text-stone-900 rounded-xl text-xs font-bold hover:bg-amber-100 transition-all cursor-pointer shadow-sm active:scale-95"
+              className="px-3 py-1.5 bg-white text-stone-900 rounded-xl text-xs font-bold hover:bg-amber-100 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
             >
-              Acompanhar Pedido
+              Acompanhar
             </button>
           </div>
         )}
@@ -178,7 +178,7 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6">
             {filteredItems.map((item) => {
               const inCartQty = cart
                 .filter((c) => c.menuItem.id === item.id)
@@ -187,7 +187,7 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="group bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:border-amber-300 transition-all flex flex-col justify-between"
+                  className="group bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:border-amber-300 transition-all flex flex-col justify-between"
                 >
                   {/* Visual Cover */}
                   <div className="relative">
@@ -195,15 +195,15 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
                       category={item.category}
                       name={item.name}
                       imageUrl={item.imageUrl}
-                      className="h-44 w-full"
+                      className="h-36 sm:h-44 w-full"
                     />
                     {item.badge && (
-                      <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-stone-900/85 backdrop-blur-xs text-white text-[11px] font-bold tracking-wide shadow-xs">
+                      <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-stone-900/85 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-bold tracking-wide shadow-xs">
                         {item.badge}
                       </div>
                     )}
                     {inCartQty > 0 && (
-                      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold tracking-wide shadow-xs flex items-center gap-1">
+                      <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-emerald-600 text-white text-[10px] sm:text-[11px] font-bold tracking-wide shadow-xs flex items-center gap-1">
                         <Check className="w-3 h-3" />
                         <span>{inCartQty} no carrinho</span>
                       </div>
@@ -218,22 +218,22 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
                   </div>
 
                   {/* Details */}
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold font-heading text-stone-900 text-base sm:text-lg leading-snug group-hover:text-amber-700 transition-colors">
+                        <h3 className="font-bold font-heading text-stone-900 text-base leading-snug group-hover:text-amber-700 transition-colors">
                           {item.name}
                         </h3>
                       </div>
 
-                      <p className="text-xs sm:text-sm text-stone-600 mt-1.5 leading-relaxed line-clamp-2">
+                      <p className="text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed line-clamp-2">
                         {item.description}
                       </p>
 
                       {item.ingredients && item.ingredients.length > 0 && (
-                        <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[11px] text-stone-500">
+                        <div className="mt-2 flex flex-wrap items-center gap-1 text-[10px] sm:text-[11px] text-stone-500">
                           {item.ingredients.slice(0, 3).map((ing, i) => (
-                            <span key={i} className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md font-medium">
+                            <span key={i} className="bg-stone-100 text-stone-600 px-1.5 sm:px-2 py-0.5 rounded-md font-medium">
                               {ing}
                             </span>
                           ))}
@@ -242,12 +242,12 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
                     </div>
 
                     {/* Price & Action */}
-                    <div className="pt-3.5 border-t border-stone-100 flex items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
                       <div>
                         <div className="text-[10px] text-stone-400 uppercase tracking-wider font-semibold">
                           A partir de
                         </div>
-                        <div className="text-xl font-black font-heading text-amber-700 tabular-nums">
+                        <div className="text-lg sm:text-xl font-black font-heading text-amber-700 tabular-nums">
                           {formatBRL(item.price)}
                         </div>
                       </div>
@@ -256,7 +256,7 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
                         type="button"
                         onClick={() => onOpenItemCustomize(item)}
                         disabled={!item.available}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-40 text-white text-xs font-bold shadow-md shadow-amber-600/20 transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-40 text-white text-xs font-bold shadow-md shadow-amber-600/20 transition-all cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                         <span>{item.sizeOptions || item.category === 'salgados' ? 'Personalizar' : 'Adicionar'}</span>
@@ -272,7 +272,7 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
 
       {/* Sticky Bottom Cart Bar (Appears when cart has items) */}
       {cartItemsCount > 0 && (
-        <div className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 animate-in fade-in slide-in-from-bottom-4 duration-150">
+        <div className="fixed bottom-3 inset-x-3 sm:bottom-4 sm:inset-x-4 max-w-lg mx-auto z-40 pb-[env(safe-area-inset-bottom)] animate-in fade-in slide-in-from-bottom-4 duration-150">
           <button
             type="button"
             onClick={onOpenCart}
