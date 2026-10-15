@@ -53,8 +53,9 @@ app.put('/api/products/:id', (req, res) => {
 
 app.post('/api/products/bulk', (req, res) => {
   const list = Array.isArray(req.body) ? req.body : (req.body?.items || []);
-  const saved = serverDb.saveProductsBulk(list);
-  res.json({ success: true, count: saved.length, products: saved });
+  const replaceAll = Boolean(req.body?.replaceAll || req.body?.replace || req.query?.replace === 'true');
+  const saved = serverDb.saveProductsBulk(list, replaceAll);
+  res.json({ success: true, count: saved.length, products: saved, replaced: replaceAll });
 });
 
 app.delete('/api/products/:id', (req, res) => {

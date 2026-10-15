@@ -30,7 +30,7 @@ export const PWAInstallButton: React.FC<{ className?: string; variant?: 'button'
     <>
       <button
         onClick={handleClick}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white font-bold text-xs shadow-sm hover:shadow transition-all cursor-pointer ${className}`}
+        className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white font-bold text-xs shadow-sm hover:shadow transition-all cursor-pointer ${className}`}
         title="Instalar aplicativo Santo Grau no celular"
       >
         {isInstallable ? (
@@ -38,7 +38,8 @@ export const PWAInstallButton: React.FC<{ className?: string; variant?: 'button'
         ) : (
           <Smartphone className="w-3.5 h-3.5" />
         )}
-        <span>Instalar App</span>
+        <span className="hidden xs:inline">Instalar</span>
+        <span className="hidden sm:inline"> App</span>
       </button>
 
       <PWAInstallModal

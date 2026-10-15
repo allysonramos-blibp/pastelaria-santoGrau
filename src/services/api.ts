@@ -196,16 +196,25 @@ export const api = {
     return fallback.filter((item) => !localDeleted.has(item.id));
   },
 
-  async saveProductsBulk(products: MenuItem[]): Promise<MenuItem[]> {
-    products.forEach((p) => {
-      if (p.id) unmarkLocalDeletedId(p.id);
-    });
+  async saveProductsBulk(products: MenuItem[], replaceAll: boolean = false): Promise<MenuItem[]> {
+    if (replaceAll) {
+      try {
+        localStorage.removeItem('pastelaria_deleted_ids');
+      } catch (e) {
+        console.warn(e);
+      }
+    } else {
+      products.forEach((p) => {
+        if (p.id) unmarkLocalDeletedId(p.id);
+      });
+    }
+
     const config = getApiConfig();
     try {
       const res = await fetch(`${config.baseUrl}/products/bulk`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(products),
+        body: JSON.stringify({ items: products, replaceAll }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -214,6 +223,9 @@ export const api = {
           unmarkLocalDeletedId(prod.id);
           broadcastChannel?.postMessage({ type: 'PRODUCT_SAVED', product: prod });
         });
+        if (replaceAll) {
+          broadcastChannel?.postMessage({ type: 'CATALOG_REPLACED', products: savedList });
+        }
         return savedList;
       }
     } catch (e) {

@@ -195,7 +195,7 @@ export const CustomerMenu: React.FC<CustomerMenuProps> = ({
                       category={item.category}
                       name={item.name}
                       imageUrl={item.imageUrl}
-                      className="h-36 sm:h-44 w-full"
+                      className="h-32 sm:h-44 w-full"
                     />
                     {item.badge && (
                       <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-stone-900/85 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-bold tracking-wide shadow-xs">

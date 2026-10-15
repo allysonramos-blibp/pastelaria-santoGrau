@@ -104,11 +104,11 @@ export default function App() {
     try {
       setSyncStatus('syncing');
       const bundle = await api.syncCatalog(INITIAL_MENU_ITEMS);
-      if (bundle) {
+      if (bundle && bundle.products) {
         const deletedSet = new Set(bundle.deletedIds);
         setMenuItems((current) => {
           const cleaned = bundle.products.filter((p) => !deletedSet.has(p.id));
-          return cleaned;
+          return cleaned.length > 0 ? cleaned : current;
         });
         if (bundle.orders && bundle.orders.length > 0) {
           setOrders(bundle.orders);
@@ -300,7 +300,24 @@ export default function App() {
     }
   };
 
-  const handleBulkSaveMenuItems = async (newItems: MenuItem[]) => {
+  const handleBulkSaveMenuItems = async (newItems: MenuItem[], replaceExisting: boolean = false) => {
+    if (replaceExisting) {
+      try {
+        localStorage.removeItem('pastelaria_deleted_ids');
+        localStorage.setItem('pastelaria_menu_items', JSON.stringify(newItems));
+      } catch (e) {
+        console.warn(e);
+      }
+      setMenuItems(newItems);
+      try {
+        await api.saveProductsBulk(newItems, true);
+        await refreshSync();
+      } catch (e) {
+        console.warn('Erro ao substituir cardápio em massa:', e);
+      }
+      return;
+    }
+
     newItems.forEach((it) => {
       if (it.id) unmarkLocalDeletedId(it.id);
     });
@@ -317,7 +334,7 @@ export default function App() {
       return copy;
     });
     try {
-      await api.saveProductsBulk(newItems);
+      await api.saveProductsBulk(newItems, false);
       await refreshSync();
     } catch (e) {
       console.warn('Erro ao salvar produtos em massa:', e);

@@ -43,7 +43,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         {/* ZONE 1: Brand Wordmark */}
         <button
           onClick={() => onSelectMode('cliente')}
-          className="text-base sm:text-xl font-black font-heading tracking-tight text-stone-900 truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none hover:text-amber-700 transition-colors cursor-pointer text-left shrink-0"
+          className="text-sm xs:text-base sm:text-xl font-black font-heading tracking-tight text-stone-900 truncate max-w-[120px] xs:max-w-[170px] sm:max-w-none hover:text-amber-700 transition-colors cursor-pointer text-left shrink-0"
         >
           {settings.storeName}
         </button>
@@ -141,15 +141,15 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         </nav>
 
         {/* ZONE 3: Actions + Auth */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <PWAInstallButton />
 
           {currentMode === 'cliente' ? (
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={onOpenCart}
-                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs active:scale-95"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs active:scale-95"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span className="hidden xs:inline">Carrinho</span>
@@ -167,28 +167,28 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                     onOpenLogin();
                   }
                 }}
-                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer active:scale-95"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer active:scale-95"
                 title="Acesso restrito do dono / gerência com JWT"
               >
                 <Lock className="w-3.5 h-3.5 text-stone-500" />
-                <span className="hidden sm:inline">Acesso Dono</span>
+                <span className="hidden sm:inline">Dono</span>
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-50 text-amber-950 border border-amber-200 text-xs font-bold shadow-xs">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl bg-amber-50 text-amber-950 border border-amber-200 text-xs font-bold shadow-xs">
                 <span>{currentUser?.role === 'ADMIN' ? '👑' : currentUser?.role === 'GERENTE' ? '💼' : '📱'}</span>
-                <span className="truncate max-w-[70px] sm:max-w-none">{currentUser?.name || 'Dono'}</span>
+                <span className="truncate max-w-[65px] sm:max-w-none">{currentUser?.name || 'Dono'}</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => onSelectMode('cliente')}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                 title="Voltar ao Cardápio"
               >
                 <Utensils className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden sm:inline">Ver Cardápio</span>
+                <span className="hidden sm:inline">Cardápio</span>
               </button>
 
               <button

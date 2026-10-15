@@ -22,7 +22,7 @@ interface MenuEditorProps {
   menuItems: MenuItem[];
   extras: ExtraOption[];
   onSaveItem: (item: MenuItem) => void;
-  onBulkSaveItems?: (items: MenuItem[]) => void;
+  onBulkSaveItems?: (items: MenuItem[], replaceExisting?: boolean) => void;
   onDeleteItem: (itemId: string) => void;
   onToggleAvailability: (itemId: string) => void;
   onSaveExtra: (extra: ExtraOption) => void;
@@ -54,6 +54,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   const [bulkDefaultCategory, setBulkDefaultCategory] = useState<ProductCategory>('salgados');
   const [bulkAddGiant, setBulkAddGiant] = useState(true);
   const [bulkGiantDelta, setBulkGiantDelta] = useState('6.00');
+  const [bulkReplaceExisting, setBulkReplaceExisting] = useState(false);
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
@@ -232,12 +233,16 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
     }
 
     if (onBulkSaveItems) {
-      onBulkSaveItems(parsedBulkItems);
+      onBulkSaveItems(parsedBulkItems, bulkReplaceExisting);
     } else {
       parsedBulkItems.forEach((it) => onSaveItem(it));
     }
 
-    setBulkSuccessMsg(`🎉 ${parsedBulkItems.length} itens inseridos com sucesso no cardápio!`);
+    setBulkSuccessMsg(
+      bulkReplaceExisting
+        ? `🎉 Cardápio atualizado! ${parsedBulkItems.length} itens definidos como catálogo oficial!`
+        : `🎉 ${parsedBulkItems.length} itens inseridos com sucesso no cardápio!`
+    );
     setBulkError(null);
 
     setTimeout(() => {
@@ -341,9 +346,9 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header & Subtabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-xs">
         <div>
-          <h2 className="text-lg font-bold font-heading text-stone-900">
+          <h2 className="text-base sm:text-lg font-bold font-heading text-stone-900">
             Cardápio & Ingredientes
           </h2>
           <p className="text-xs text-stone-500">
@@ -351,15 +356,15 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-semibold">
             <button
               onClick={() => setActiveTab('items')}
               className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center ${
                 activeTab === 'items' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
               }`}
             >
-              Pastéis & Produtos ({menuItems.length})
+              Produtos ({menuItems.length})
             </button>
             <button
               onClick={() => setActiveTab('extras')}
@@ -372,20 +377,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
           </div>
 
           {activeTab === 'items' && (
-            <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-end">
-              {/* Sincronizar Agora */}
-              {onRefreshSync && (
-                <button
-                  type="button"
-                  onClick={onRefreshSync}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer transition-colors active:scale-95"
-                  title="Sincronizar com o banco de dados agora"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${syncStatus === 'syncing' ? 'animate-spin text-amber-600' : 'text-stone-500'}`} />
-                  <span className="hidden xs:inline">Sincronizar</span>
-                </button>
-              )}
-
+            <div className="flex items-center gap-1.5 flex-wrap">
               {/* Inserção em Massa Button */}
               <button
                 type="button"
@@ -394,7 +386,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                   setBulkSuccessMsg(null);
                   setIsBulkModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
                 title="Inserir múltiplos itens de uma só vez"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -405,11 +397,23 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
               <button
                 type="button"
                 onClick={openCreateModal}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
+                className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Novo</span>
               </button>
+
+              {/* Sincronizar Agora */}
+              {onRefreshSync && (
+                <button
+                  type="button"
+                  onClick={onRefreshSync}
+                  className="p-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer transition-colors active:scale-95"
+                  title="Sincronizar com o banco de dados agora"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncStatus === 'syncing' ? 'animate-spin text-amber-600' : 'text-stone-500'}`} />
+                </button>
+              )}
 
               {/* Exportar JSON */}
               <button
@@ -418,7 +422,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl border border-stone-200 cursor-pointer transition-colors"
                 title="Exportar Cardápio em JSON"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
@@ -763,9 +767,10 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
       {/* MODAL INSERÇÃO EM MASSA (BULK INSERT) */}
       {isBulkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/75 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl p-4 sm:p-6 space-y-3 sm:space-y-4 my-auto max-h-[92vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-xs">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header (shrink-0) */}
+            <div className="p-3.5 sm:p-4 border-b border-stone-200 flex items-center justify-between shrink-0 bg-stone-50/70">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
                   <Sparkles className="w-5 h-5" />
@@ -780,179 +785,235 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsBulkModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 cursor-pointer p-1"
+                className="text-stone-400 hover:text-stone-700 cursor-pointer p-1.5 rounded-lg hover:bg-stone-100"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Mode selection + Quick Sample */}
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setBulkMode('text')}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    bulkMode === 'text' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
-                  }`}
-                >
-                  Lista Rápida
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBulkMode('json')}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    bulkMode === 'json' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
-                  }`}
-                >
-                  Modo JSON
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 text-[11px] text-stone-600 pr-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBulkMode('text');
-                    setBulkText(
-                      'Pastel de Carne Tradicional - R$ 14,00 - Carne moída de primeira, ovo e azeitonas\n' +
-                      'Pastel de Queijo Especial - R$ 13,00 - Mussarela selecionada e orégano\n' +
-                      'Pastel 4 Queijos Especial - R$ 17,00 - Mussarela, provolone, parmesão e catupiry\n' +
-                      'Pastel de Nutella com Morango - R$ 16,50 - Nutella pura e morangos frescos\n' +
-                      'Caldo de Cana Gelado 500ml - R$ 8,00\n' +
-                      'Coca-Cola Lata 350ml - R$ 6,00\n' +
-                      'Porção de Mini Pastéis (12 un) - R$ 28,00'
-                    );
-                  }}
-                  className="px-2 py-0.5 rounded-md bg-white border border-stone-200 text-amber-700 font-bold hover:bg-amber-50 cursor-pointer"
-                >
-                  Colar Exemplo
-                </button>
-                <span>Categoria:</span>
-                <select
-                  value={bulkDefaultCategory}
-                  onChange={(e) => setBulkDefaultCategory(e.target.value as ProductCategory)}
-                  className="bg-white border border-stone-300 rounded-md px-1.5 py-0.5 text-xs text-stone-800 focus:outline-none"
-                >
-                  <option value="salgados">Salgados</option>
-                  <option value="especiais">Especiais</option>
-                  <option value="doces">Doces</option>
-                  <option value="bebidas">Bebidas</option>
-                  <option value="porcoes">Porções</option>
-                  <option value="combos">Combos</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Helper tips */}
-            {bulkMode === 'text' && (
-              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 space-y-1">
-                <div className="font-bold flex items-center gap-1">
-                  <FileText className="w-3.5 h-3.5" />
-                  Formatos aceitos automaticamente (um item por linha):
+            {/* Scrollable Body (flex-1 overflow-y-auto) */}
+            <div className="p-3.5 sm:p-5 overflow-y-auto flex-1 space-y-4 min-h-0">
+              {/* Mode selection + Quick Sample */}
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setBulkMode('text')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      bulkMode === 'text' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                    }`}
+                  >
+                    Lista Rápida
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkMode('json')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      bulkMode === 'json' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                    }`}
+                  >
+                    Modo JSON
+                  </button>
                 </div>
-                <div className="text-amber-800 font-mono text-[10.5px] pl-4 space-y-0.5">
-                  <div>• Pastel de Carne - R$ 14,00 - Carne moída, ovo, azeitona</div>
-                  <div>• Pastel de Queijo Especial | 13.00 | salgados</div>
-                  <div>• Pastel de Nutella com Morango - R$ 16,50</div>
-                  <div>• Caldo de Cana 500ml - R$ 8,00</div>
+
+                <div className="flex items-center gap-2 text-[11px] text-stone-600 pr-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBulkMode('text');
+                      setBulkText(
+                        'Pastel de Carne Tradicional - R$ 14,00 - Carne moída de primeira, ovo e azeitonas\n' +
+                        'Pastel de Queijo Especial - R$ 13,00 - Mussarela selecionada e orégano\n' +
+                        'Pastel de Pizza Paulista - R$ 14,50 - Presunto, queijo, tomate e orégano\n' +
+                        'Pastel de Camarão com Catupiry - R$ 22,00 - Camarões frescos e Catupiry legítimo\n' +
+                        'Pastel de Nutella com Morango - R$ 16,50 - Nutella pura e morangos frescos\n' +
+                        'Caldo de Cana Gelado 500ml - R$ 8,00\n' +
+                        'Coca-Cola Lata 350ml - R$ 6,00\n' +
+                        'Porção de Mini Pastéis (12 un) - R$ 28,00'
+                      );
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-white border border-stone-200 text-amber-700 font-bold hover:bg-amber-50 cursor-pointer"
+                  >
+                    Colar Seus Itens
+                  </button>
+                  <span>Categoria padrão:</span>
+                  <select
+                    value={bulkDefaultCategory}
+                    onChange={(e) => setBulkDefaultCategory(e.target.value as ProductCategory)}
+                    className="bg-white border border-stone-300 rounded-md px-1.5 py-0.5 text-xs text-stone-800 focus:outline-none"
+                  >
+                    <option value="salgados">Salgados</option>
+                    <option value="especiais">Especiais</option>
+                    <option value="doces">Doces</option>
+                    <option value="bebidas">Bebidas</option>
+                    <option value="porcoes">Porções</option>
+                    <option value="combos">Combos</option>
+                  </select>
                 </div>
               </div>
-            )}
 
-            {/* Textarea */}
-            <div className="flex-1 min-h-[140px] flex flex-col">
-              <textarea
-                value={bulkText}
-                onChange={(e) => {
-                  setBulkText(e.target.value);
-                  setBulkError(null);
-                }}
-                rows={6}
-                placeholder={
-                  bulkMode === 'text'
-                    ? 'Cole aqui os itens do cardápio...\n\nPastel de Carne - R$ 14,00 - Carne moída de primeira e azeitonas\nPastel de Queijo Especial - R$ 13,00\nPastel de Nutella com Morango - R$ 16,50\nCaldo de Cana 500ml - R$ 8,00'
-                    : '[\n  { "name": "Pastel de Carne", "price": 14, "category": "salgados" }\n]'
-                }
-                className="w-full flex-1 p-3 rounded-xl border border-stone-300 font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none bg-stone-50/30"
-              />
-            </div>
-
-            {/* Quick Options */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs border-t border-stone-100 pt-3">
-              <label className="flex items-center gap-2 cursor-pointer font-medium text-stone-700">
-                <input
-                  type="checkbox"
-                  checked={bulkAddGiant}
-                  onChange={(e) => setBulkAddGiant(e.target.checked)}
-                  className="rounded border-stone-300 text-amber-600 focus:ring-amber-500"
-                />
-                <span>Adicionar opção Gigante (30cm) para pastéis (+R$</span>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={bulkGiantDelta}
-                  onChange={(e) => setBulkGiantDelta(e.target.value)}
-                  className="w-14 px-1.5 py-0.5 border border-stone-300 rounded text-xs text-center"
-                />
-                <span>)</span>
-              </label>
-
-              <div className="text-xs font-bold text-stone-600">
-                Detectados: <span className="text-amber-600 font-extrabold">{parsedBulkItems.length} itens</span>
-              </div>
-            </div>
-
-            {/* Live Preview List */}
-            {parsedBulkItems.length > 0 && (
-              <div className="max-h-48 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 bg-stone-50/50">
-                <div className="px-3 py-1.5 bg-stone-100 font-bold text-[11px] text-stone-700 flex justify-between items-center">
-                  <span>Pré-visualização dos itens a serem inseridos:</span>
-                  <span className="text-stone-500">{parsedBulkItems.length} prontos</span>
-                </div>
-                {parsedBulkItems.map((it, idx) => (
-                  <div key={idx} className="px-3 py-2 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 flex-1 truncate pr-2">
-                      <span className="font-bold text-stone-900 truncate">{it.name}</span>
-                      <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-stone-200 text-stone-700">
-                        {it.category}
-                      </span>
-                      {it.description && (
-                        <span className="text-[11px] text-stone-400 truncate max-w-[200px]">
-                          {it.description}
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-bold text-amber-700 tabular-nums">
-                      {formatBRL(it.price)}
-                    </div>
+              {/* Helper tips */}
+              {bulkMode === 'text' && (
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 space-y-1">
+                  <div className="font-bold flex items-center gap-1">
+                    <FileText className="w-3.5 h-3.5 text-amber-700" />
+                    Formatos aceitos automaticamente:
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="text-amber-800 font-mono text-[10.5px] pl-4 space-y-0.5">
+                    <div>• Pastel de Carne Tradicional - R$ 14,00 - Carne moída de primeira, ovo e azeitonas</div>
+                    <div>• Pastel de Queijo Especial - R$ 13,00 - Mussarela selecionada e orégano</div>
+                    <div>• Caldo de Cana Gelado 500ml - R$ 8,00</div>
+                  </div>
+                </div>
+              )}
 
-            {/* Error & Success Messages */}
-            {bulkError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{bulkError}</span>
+              {/* Textarea */}
+              <div className="flex flex-col space-y-1">
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => {
+                    setBulkText(e.target.value);
+                    setBulkError(null);
+                  }}
+                  rows={6}
+                  placeholder={
+                    bulkMode === 'text'
+                      ? 'Cole aqui a lista de produtos...\n\nPastel de Carne Tradicional - R$ 14,00 - Carne moída, ovo, azeitonas\nPastel de Queijo Especial - R$ 13,00 - Mussarela e orégano\nCaldo de Cana Gelado 500ml - R$ 8,00'
+                      : '[\n  { "name": "Pastel de Carne", "price": 14, "category": "salgados" }\n]'
+                  }
+                  className="w-full h-36 sm:h-44 p-3 rounded-xl border border-stone-300 font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none bg-stone-50/50 resize-y"
+                />
               </div>
-            )}
 
-            {bulkSuccessMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                <span>{bulkSuccessMsg}</span>
+              {/* Selection Mode: Replace vs Append */}
+              <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 space-y-2 text-xs">
+                <div className="font-bold text-stone-800">Opção de Cadastro:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label
+                    onClick={() => setBulkReplaceExisting(true)}
+                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      bulkReplaceExisting
+                        ? 'bg-amber-50/90 border-amber-500 text-amber-950 font-bold shadow-xs'
+                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="bulkModeChoice"
+                      checked={bulkReplaceExisting}
+                      onChange={() => setBulkReplaceExisting(true)}
+                      className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div>
+                      <div className="font-bold text-xs text-stone-900">Substituir Cardápio</div>
+                      <div className="text-[11px] font-normal text-stone-500 mt-0.5">
+                        Define esta lista como o cardápio oficial, removendo itens antigos de teste
+                      </div>
+                    </div>
+                  </label>
+
+                  <label
+                    onClick={() => setBulkReplaceExisting(false)}
+                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      !bulkReplaceExisting
+                        ? 'bg-amber-50/90 border-amber-500 text-amber-950 font-bold shadow-xs'
+                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="bulkModeChoice"
+                      checked={!bulkReplaceExisting}
+                      onChange={() => setBulkReplaceExisting(false)}
+                      className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div>
+                      <div className="font-bold text-xs text-stone-900">Acrescentar / Atualizar</div>
+                      <div className="text-[11px] font-normal text-stone-500 mt-0.5">
+                        Mantém os itens já cadastrados e adiciona ou atualiza estes
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
-            )}
 
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 border-t border-stone-100 pt-3">
+              {/* Quick Options */}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-medium text-stone-700">
+                  <input
+                    type="checkbox"
+                    checked={bulkAddGiant}
+                    onChange={(e) => setBulkAddGiant(e.target.checked)}
+                    className="rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <span>Adicionar opção Gigante (30cm) para pastéis (+R$</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={bulkGiantDelta}
+                    onChange={(e) => setBulkGiantDelta(e.target.value)}
+                    className="w-14 px-1.5 py-0.5 border border-stone-300 rounded text-xs text-center"
+                  />
+                  <span>)</span>
+                </label>
+
+                <div className="text-xs font-bold text-stone-600">
+                  Detectados: <span className="text-amber-600 font-extrabold">{parsedBulkItems.length} itens</span>
+                </div>
+              </div>
+
+              {/* Live Preview List */}
+              {parsedBulkItems.length > 0 && (
+                <div className="max-h-48 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 bg-stone-50/50">
+                  <div className="px-3 py-1.5 bg-stone-100 font-bold text-[11px] text-stone-700 flex justify-between items-center sticky top-0">
+                    <span>Pré-visualização dos itens a serem inseridos:</span>
+                    <span className="text-amber-700 font-bold">{parsedBulkItems.length} prontos</span>
+                  </div>
+                  {parsedBulkItems.map((it, idx) => (
+                    <div key={idx} className="px-3 py-2 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 flex-1 truncate pr-2">
+                        <span className="font-bold text-stone-900 truncate">{it.name}</span>
+                        <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-stone-200 text-stone-700">
+                          {it.category}
+                        </span>
+                        {it.description && (
+                          <span className="text-[11px] text-stone-400 truncate max-w-[200px]">
+                            {it.description}
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-bold text-amber-700 tabular-nums">
+                        {formatBRL(it.price)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Error & Success Messages */}
+              {bulkError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{bulkError}</span>
+                </div>
+              )}
+
+              {bulkSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span>{bulkSuccessMsg}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions (Sticky Footer) */}
+            <div className="p-3 sm:p-4 border-t border-stone-200 bg-stone-50 flex items-center justify-between sm:justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsBulkModalOpen(false)}
-                className="px-4 py-2 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 font-semibold cursor-pointer text-xs"
+                className="px-4 py-2.5 border border-stone-300 text-stone-700 rounded-xl hover:bg-stone-100 font-semibold cursor-pointer text-xs transition-colors"
               >
                 Cancelar
               </button>
@@ -960,11 +1021,11 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 type="button"
                 disabled={parsedBulkItems.length === 0}
                 onClick={handleExecuteBulkInsert}
-                className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl cursor-pointer text-xs shadow-xs transition-colors"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl cursor-pointer text-xs shadow-md transition-colors active:scale-95"
               >
                 <Check className="w-4 h-4" />
                 <span>
-                  Inserir Todos no Cardápio ({parsedBulkItems.length} itens)
+                  {bulkReplaceExisting ? 'Substituir Cardápio' : 'Inserir Itens'} ({parsedBulkItems.length})
                 </span>
               </button>
             </div>

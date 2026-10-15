@@ -194,7 +194,7 @@ export const PosTerminal: React.FC<PosTerminalProps> = ({
       </div>
 
       {/* RIGHT: Current Order Cart & Checkout (5 cols) */}
-      <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-stone-200 p-4 shadow-sm space-y-4">
+      <div id="pos-summary-panel" className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-stone-200 p-4 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-stone-100">
           <div>
             <h3 className="font-bold text-stone-900 text-base">Comanda / Caixa</h3>
@@ -415,6 +415,39 @@ export const PosTerminal: React.FC<PosTerminalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Floating Bottom Bar on Mobile for POS */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-3 inset-x-3 z-40 max-w-lg mx-auto pb-[env(safe-area-inset-bottom)] animate-in fade-in slide-in-from-bottom-4 duration-150">
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('pos-summary-panel');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-stone-900 text-white shadow-2xl border border-stone-700 active:scale-98 cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black text-xs flex items-center justify-center">
+                {cart.reduce((a, b) => a + b.quantity, 0)}
+              </div>
+              <div className="text-left text-xs">
+                <div className="font-bold text-amber-300">Caixa / Balcão</div>
+                <div className="text-[11px] text-stone-400">Toque para fechar pagamento</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-amber-400 text-sm tabular-nums">
+                {formatBRL(total)}
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold text-xs">
+                Cobrar →
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -483,7 +483,7 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
 
           {/* RIGHT 4-5 COLS: Resumo da Comanda + Observações Rápidas + Botão Enviar Cozinha */}
           <div className="lg:col-span-5 xl:col-span-4 space-y-4 lg:sticky lg:top-20">
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-md overflow-hidden">
+            <div id="comanda-summary-panel" className="bg-white rounded-2xl border border-stone-200 shadow-md overflow-hidden">
               <div className="p-3.5 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
                 <div>
                   <h3 className="font-black text-sm text-stone-900">
@@ -634,6 +634,44 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Floating Order Bar on Mobile for Waiters */}
+          {cart.length > 0 && (
+            <div className="lg:hidden fixed bottom-3 inset-x-3 z-40 max-w-lg mx-auto pb-[env(safe-area-inset-bottom)] animate-in fade-in slide-in-from-bottom-4 duration-150">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('comanda-summary-panel');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-stone-900 text-white shadow-2xl border border-stone-700 active:scale-98 cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black text-xs flex items-center justify-center">
+                    {cartTotalQty}
+                  </div>
+                  <div className="text-left text-xs">
+                    <div className="font-bold text-amber-300 truncate max-w-[150px]">
+                      {customerName.trim() || 'Comanda sem nome'}
+                    </div>
+                    <div className="text-[11px] text-stone-400">
+                      Toque para revisar & enviar
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-amber-400 text-sm tabular-nums">
+                    {formatBRL(cartSubtotal)}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold text-xs flex items-center gap-1">
+                    <span>Revisar</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

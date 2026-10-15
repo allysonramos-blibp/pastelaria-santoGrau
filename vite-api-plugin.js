@@ -54,11 +54,12 @@ export function viteApiPlugin() {
             }
           }
 
-                    if (pathOnly === '/api/products/bulk' && req.method === 'POST') {
+          if (pathOnly === '/api/products/bulk' && req.method === 'POST') {
             const body = await readBody();
             const list = Array.isArray(body) ? body : (body?.items || []);
-            const saved = serverDb.saveProductsBulk(list);
-            return res.end(JSON.stringify({ success: true, count: saved.length, products: saved }));
+            const replaceAll = Boolean(body?.replaceAll || body?.replace || (parsedUrl.query && parsedUrl.query.includes('replace=true')));
+            const saved = serverDb.saveProductsBulk(list, replaceAll);
+            return res.end(JSON.stringify({ success: true, count: saved.length, products: saved, replaced: replaceAll }));
           }
 
           if (pathOnly.startsWith('/api/products/')) {

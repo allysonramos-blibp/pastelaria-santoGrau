@@ -19,6 +19,7 @@ export const KitchenKanban: React.FC<KitchenKanbanProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<OrderType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [mobileActiveStage, setMobileActiveStage] = useState<OrderStatus | 'all'>('all');
 
   const filteredOrders = orders.filter((order) => {
     if (filterType !== 'all' && order.orderType !== filterType) return false;
@@ -127,16 +128,51 @@ export const KitchenKanban: React.FC<KitchenKanbanProps> = ({
         </div>
       </div>
 
+      {/* Mobile Stage Selector Tabs (< md) */}
+      <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => setMobileActiveStage('all')}
+          className={`px-3 py-1.5 rounded-xl shrink-0 transition-all ${
+            mobileActiveStage === 'all'
+              ? 'bg-stone-900 text-white shadow-xs'
+              : 'bg-white text-stone-600 border border-stone-200'
+          }`}
+        >
+          Todas ({filteredOrders.length})
+        </button>
+        {columns.map((c) => {
+          const count = filteredOrders.filter((o) => o.status === c.id).length;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setMobileActiveStage(c.id)}
+              className={`px-3 py-1.5 rounded-xl shrink-0 transition-all ${
+                mobileActiveStage === c.id
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-white text-stone-600 border border-stone-200'
+              }`}
+            >
+              {c.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       {/* 4-Column Kitchen Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
         {columns.map((col) => {
           const colOrders = filteredOrders.filter((o) => o.status === col.id);
           const ColIcon = col.icon;
+          const isHiddenOnMobile = mobileActiveStage !== 'all' && mobileActiveStage !== col.id;
 
           return (
             <div
               key={col.id}
-              className="bg-stone-100/80 rounded-2xl p-3 border border-stone-200 flex flex-col min-h-[500px]"
+              className={`bg-stone-100/80 rounded-2xl p-3 border border-stone-200 flex flex-col min-h-[220px] md:min-h-[500px] ${
+                isHiddenOnMobile ? 'hidden md:flex' : 'flex'
+              }`}
             >
               {/* Column header */}
               <div className="flex items-center justify-between pb-3 mb-2 border-b border-stone-200/70 px-1">

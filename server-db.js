@@ -136,10 +136,15 @@ export const serverDb = {
     return db.deletedProductIds || [];
   },
 
-  saveProductsBulk(productsList) {
+  saveProductsBulk(productsList, replaceAll = false) {
     const db = readDb();
     if (!db.products) db.products = [];
     if (!db.deletedProductIds) db.deletedProductIds = [];
+
+    if (replaceAll) {
+      db.products = [];
+      db.deletedProductIds = [];
+    }
 
     const saved = [];
     for (const item of (Array.isArray(productsList) ? productsList : [])) {
@@ -162,7 +167,7 @@ export const serverDb = {
       db.deletedProductIds = db.deletedProductIds.filter((id) => id !== product.id);
       const idx = db.products.findIndex((p) => p.id === product.id || p.name.toLowerCase() === product.name.toLowerCase());
       if (idx >= 0) {
-        db.products[idx] = { ...db.products[idx], ...product };
+        db.products[idx] = { ...db.products[idx], ...product, id: db.products[idx].id };
         saved.push(db.products[idx]);
       } else {
         db.products.push(product);
