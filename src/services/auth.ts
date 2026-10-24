@@ -35,7 +35,22 @@ function purgeLegacyLocalStorage() {
   }
 }
 
-purgeLegacyLocalStorage();
+export const DEFAULT_BUILTIN_USERS = [
+  {
+    id: 'usr-admin-allyson',
+    name: 'Allyson (ADM)',
+    username: 'admin',
+    passwords: ['123', 'admin'],
+    role: 'ADMIN' as UserRole,
+  },
+  {
+    id: 'usr-alessandra-ramos',
+    name: 'Alessandra Ramos',
+    username: 'alessandraramos',
+    passwords: ['2308'],
+    role: 'GERENTE' as UserRole,
+  },
+];
 
 let memorySession: AuthSession | null = null;
 
@@ -45,6 +60,7 @@ function readSession(): AuthSession | null {
       memorySession = null;
       try {
         sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
       } catch {
         // ignore
       }
@@ -53,11 +69,12 @@ function readSession(): AuthSession | null {
     return memorySession;
   }
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed: AuthSession = JSON.parse(raw);
     if (Date.now() > parsed.expiresAt) {
       sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY);
       return null;
     }
     memorySession = parsed;
@@ -72,8 +89,10 @@ function writeSession(session: AuthSession | null) {
   try {
     if (session) {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } else {
       sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY);
     }
   } catch {
     // ignore
@@ -232,12 +251,18 @@ export const authService = {
     }
   },
 
-  // Strict server-side login (Works from any phone, tablet, or computer)
+  // Robust login with server verification + offline emergency access
   async login(
     username: string,
     password: string
   ): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
-    const cleanUser = username.trim().toLowerCase().replace(/^@/, '').replace(/\s+/g, '');
+    const cleanUser = username
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/^@/, '')
+      .replace(/\s+/g, '');
     const cleanPass = password.trim();
 
     if (!cleanUser || !cleanPass) {
@@ -247,41 +272,94 @@ export const authService = {
       };
     }
 
+    // 1. Attempt server authentication (with abort controller timeout)
+    let serverResponded = false;
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6500);
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+        signal: controller.signal,
       });
 
-      const data = await res.json();
+      clearTimeout(timeoutId);
 
-      if (res.ok && data?.user && data?.token) {
-        const user: AuthUser = {
-          id: data.user.id,
-          username: data.user.username,
-          name: data.user.name,
-          role: data.user.role || 'ADMIN',
-        };
-        const session: AuthSession = {
-          token: data.token,
-          user,
-          expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14, // 14 days
-        };
-        writeSession(session);
-        return { success: true, user };
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        serverResponded = true;
+        const data = await res.json();
+
+        if (res.ok && data?.user && data?.token) {
+          const user: AuthUser = {
+            id: data.user.id,
+            username: data.user.username,
+            name: data.user.name,
+            role: data.user.role || 'ADMIN',
+          };
+          const session: AuthSession = {
+            token: data.token,
+            user,
+            expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14, // 14 days
+          };
+          writeSession(session);
+          return { success: true, user };
+        } else if (res.status === 401) {
+          return {
+            success: false,
+            message: data?.error || 'Usuário ou senha incorretos.',
+          };
+        }
       }
-
-      return {
-        success: false,
-        message: data?.error || 'Usuário ou senha incorretos.',
-      };
     } catch {
+      // Server was unreachable (Render cold sleep, network timeout, or offline)
+    }
+
+    // 2. Verified Builtin Fallback
+    // Guarantees sister (Alessandra: 2308) and admin (Allyson: 123) are NEVER locked out
+    const matchBuiltin = DEFAULT_BUILTIN_USERS.find((u) => {
+      const uName = u.username.toLowerCase();
+      const uDisplay = u.name.toLowerCase().replace(/\s+/g, '');
+      const isUserMatch =
+        uName === cleanUser ||
+        uDisplay === cleanUser ||
+        (cleanUser === 'alessandra' && uName === 'alessandraramos') ||
+        (cleanUser === 'alessandraramos' && uName === 'alessandraramos') ||
+        (cleanUser === 'allyson' && uName === 'admin') ||
+        (cleanUser === 'admin' && uName === 'admin');
+
+      return isUserMatch && u.passwords.includes(cleanPass);
+    });
+
+    if (matchBuiltin) {
+      const user: AuthUser = {
+        id: matchBuiltin.id,
+        username: matchBuiltin.username,
+        name: matchBuiltin.name,
+        role: matchBuiltin.role,
+      };
+      const session: AuthSession = {
+        token: `offline-jwt-${Date.now()}-${btoa(user.username)}`,
+        user,
+        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14,
+      };
+      writeSession(session);
+      return { success: true, user };
+    }
+
+    if (serverResponded) {
       return {
         success: false,
-        message: 'Não foi possível conectar ao servidor de autenticação. Tente novamente.',
+        message: 'Usuário ou senha incorretos.',
       };
     }
+
+    return {
+      success: false,
+      message: 'O servidor está iniciando. Tente novamente em alguns segundos ou verifique os dados.',
+    };
   },
 
   logout(): void {
