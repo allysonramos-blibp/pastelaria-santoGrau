@@ -3,8 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { MenuItem, ExtraOption, StoreSettings, Order, CartItem, OrderStatus, PaymentMethod } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  MenuItem,
+  ExtraOption,
+  StoreSettings,
+  Order,
+  CartItem,
+  OrderStatus,
+  PaymentMethod,
+} from './types';
 import {
   INITIAL_MENU_ITEMS,
   INITIAL_EXTRAS,
@@ -27,42 +35,23 @@ import { LoginModal } from './components/LoginModal';
 import { QrCodeCard } from './components/QrCodeCard';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { playChimeSound } from './utils/sound';
-import { api, getLocalDeletedIds, saveLocalDeletedId, unmarkLocalDeletedId } from './services/api';
+import { api } from './services/api';
 import { authService, AuthUser } from './services/auth';
-import { RotateCcw, Heart, Lock, ShieldAlert, Wifi, RefreshCw } from 'lucide-react';
+import { RotateCcw, Lock } from 'lucide-react';
 
 export default function App() {
-  // 1. Persistent State with localStorage fallback and server sync
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const deletedSet = new Set(getLocalDeletedIds());
-    const saved = localStorage.getItem('pastelaria_menu_items');
-    const list: MenuItem[] = saved ? JSON.parse(saved) : INITIAL_MENU_ITEMS;
-    return list.filter((item) => !deletedSet.has(item.id));
-  });
-
-  const [extras, setExtras] = useState<ExtraOption[]>(() => {
-    const saved = localStorage.getItem('pastelaria_extras');
-    return saved ? JSON.parse(saved) : INITIAL_EXTRAS;
-  });
-
-  const [settings, setSettings] = useState<StoreSettings>(() => {
-    const saved = localStorage.getItem('pastelaria_settings');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
-  });
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('pastelaria_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
-  });
-
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('pastelaria_cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // 100% Server-Authoritative State (Zero localStorage database)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(INITIAL_MENU_ITEMS);
+  const [extras, setExtras] = useState<ExtraOption[]>(INITIAL_EXTRAS);
+  const [settings, setSettings] = useState<StoreSettings>(INITIAL_SETTINGS);
+  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   // UI Navigation states
   const [mode, setMode] = useState<'cliente' | 'gestao'>('cliente');
-  const [gestaoTab, setGestaoTab] = useState<'kds' | 'comandas' | 'pos' | 'menu' | 'financeiro' | 'config'>('kds');
+  const [gestaoTab, setGestaoTab] = useState<
+    'kds' | 'comandas' | 'pos' | 'menu' | 'financeiro' | 'config'
+  >('kds');
   const [clienteTab, setClienteTab] = useState<'menu' | 'tracking'>('menu');
 
   // Modal states
@@ -73,61 +62,49 @@ export default function App() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
-  // Authentication State for Owner
+  // Server-Verified Authentication State
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
     return authService.getCurrentUser();
   });
 
-  // Sync with localStorage
-  useEffect(() => {
-    localStorage.setItem('pastelaria_menu_items', JSON.stringify(menuItems));
-  }, [menuItems]);
-
-  useEffect(() => {
-    localStorage.setItem('pastelaria_extras', JSON.stringify(extras));
-  }, [extras]);
-
-  useEffect(() => {
-    localStorage.setItem('pastelaria_settings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('pastelaria_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  // Multi-Device Auto-Sync Engine (Keeps PC, Mobile, and Server in perfect sync)
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
-  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
-  const refreshSync = async () => {
+  const refreshSync = useCallback(async () => {
     try {
       setSyncStatus('syncing');
-      const bundle = await api.syncCatalog(INITIAL_MENU_ITEMS);
-      if (bundle && bundle.products) {
-        const deletedSet = new Set(bundle.deletedIds);
-        setMenuItems((current) => {
-          const cleaned = bundle.products.filter((p) => !deletedSet.has(p.id));
-          return cleaned.length > 0 ? cleaned : current;
-        });
-        if (bundle.orders && bundle.orders.length > 0) {
+      const bundle = await api.syncCatalog();
+      if (bundle) {
+        if (Array.isArray(bundle.products)) {
+          setMenuItems(bundle.products);
+        }
+        if (Array.isArray(bundle.extras) && bundle.extras.length > 0) {
+          setExtras(bundle.extras);
+        }
+        if (bundle.settings) {
+          setSettings(bundle.settings);
+        }
+        if (Array.isArray(bundle.orders)) {
           setOrders(bundle.orders);
         }
         setSyncStatus('synced');
-        setLastSyncTime(new Date());
+      } else {
+        setSyncStatus('offline');
       }
     } catch {
       setSyncStatus('offline');
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshSync();
+    authService.verifyServerSession().then((verifiedUser) => {
+      setCurrentUser(verifiedUser);
+    });
 
-    // Polling every 5 seconds so deletions on PC reflect on mobile automatically
-    const interval = setInterval(refreshSync, 5000);
+    const interval = setInterval(refreshSync, 4000);
 
-    // Sync immediately when user switches tabs or unlocks phone screen
     const handleVis = () => {
       if (document.visibilityState === 'visible') {
         refreshSync();
@@ -136,28 +113,11 @@ export default function App() {
     window.addEventListener('visibilitychange', handleVis);
     window.addEventListener('focus', refreshSync);
 
-    // Cross-tab broadcast listener for immediate updates
-    const ch = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pastelaria_sync') : null;
+    const ch =
+      typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pastelaria_sync') : null;
     if (ch) {
-      ch.onmessage = (e) => {
-        if (e.data?.type === 'PRODUCT_DELETED') {
-          const delId = e.data.productId;
-          saveLocalDeletedId(delId);
-          setMenuItems((prev) => prev.filter((p) => p.id !== delId));
-        } else if (e.data?.type === 'PRODUCT_SAVED') {
-          const prod = e.data.product;
-          setMenuItems((prev) => {
-            const idx = prev.findIndex((p) => p.id === prod.id);
-            if (idx >= 0) {
-              const cp = [...prev];
-              cp[idx] = prod;
-              return cp;
-            }
-            return [...prev, prod];
-          });
-        } else if (e.data?.type === 'NEW_ORDER') {
-          setOrders((prev) => [e.data.order, ...prev.filter((o) => o.id !== e.data.order.id)]);
-        }
+      ch.onmessage = () => {
+        refreshSync();
       };
     }
 
@@ -167,7 +127,7 @@ export default function App() {
       window.removeEventListener('focus', refreshSync);
       ch?.close();
     };
-  }, []);
+  }, [refreshSync]);
 
   // Cart Handlers
   const handleAddToCart = (newItem: CartItem) => {
@@ -180,9 +140,7 @@ export default function App() {
     } else {
       setCart((prev) =>
         prev.map((i) =>
-          i.id === cartItemId
-            ? { ...i, quantity: newQty, totalPrice: newQty * i.unitPrice }
-            : i
+          i.id === cartItemId ? { ...i, quantity: newQty, totalPrice: newQty * i.unitPrice } : i
         )
       );
     }
@@ -196,31 +154,32 @@ export default function App() {
     setCart([]);
   };
 
-  // Order Handlers
-  const handleCreateOrder = (newOrder: Order) => {
-    setOrders((prev) => [newOrder, ...prev]);
+  // Order Handlers (Persisted on Server)
+  const handleCreateOrder = async (newOrder: Order) => {
+    setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
     setTrackingOrderId(newOrder.id);
-    api.createOrder(newOrder);
     if (settings.soundAlertsEnabled) {
       playChimeSound();
     }
+    await api.createOrder(newOrder);
+    await refreshSync();
   };
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     setOrders((prev) =>
       prev.map((o) =>
-        o.id === orderId
-          ? { ...o, status: newStatus, updatedAt: new Date().toISOString() }
-          : o
+        o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o
       )
     );
-    api.updateOrderStatus(orderId, newStatus);
+    await api.updateOrderStatus(orderId, newStatus);
+    await refreshSync();
   };
 
   // POS & Waiter Order Handlers
-  const handlePosOrderCreated = (order: Order, printImmediately: boolean) => {
-    setOrders((prev) => [order, ...prev]);
-    api.createOrder(order);
+  const handlePosOrderCreated = async (order: Order, printImmediately: boolean) => {
+    setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
+    await api.createOrder(order);
+    await refreshSync();
     if (printImmediately) {
       setPrintOrder(order);
       setTimeout(() => {
@@ -230,49 +189,54 @@ export default function App() {
     }
   };
 
-  const handleAppendItemsToOrder = (orderId: string, newItems: CartItem[], printImmediately: boolean) => {
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id !== orderId) return ord;
-        const updatedItems = [...ord.items, ...newItems];
-        const addedSubtotal = newItems.reduce((acc, it) => acc + it.totalPrice, 0);
-        const updatedTotal = ord.total + addedSubtotal;
-        const updatedOrder: Order = {
-          ...ord,
-          items: updatedItems,
-          subtotal: ord.subtotal + addedSubtotal,
-          total: updatedTotal,
-          status: 'em_preparo',
-          updatedAt: new Date().toISOString(),
-        };
-        api.createOrder(updatedOrder);
-        if (printImmediately) {
-          setPrintOrder(updatedOrder);
-          setTimeout(() => {
-            window.print();
-            setTimeout(() => setPrintOrder(null), 1000);
-          }, 150);
-        }
-        return updatedOrder;
-      })
-    );
+  const handleAppendItemsToOrder = async (
+    orderId: string,
+    newItems: CartItem[],
+    printImmediately: boolean
+  ) => {
+    const target = orders.find((ord) => ord.id === orderId);
+    if (!target) return;
+
+    const updatedItems = [...target.items, ...newItems];
+    const addedSubtotal = newItems.reduce((acc, it) => acc + it.totalPrice, 0);
+    const updatedOrder: Order = {
+      ...target,
+      items: updatedItems,
+      subtotal: target.subtotal + addedSubtotal,
+      total: target.total + addedSubtotal,
+      status: 'em_preparo',
+      updatedAt: new Date().toISOString(),
+    };
+
+    setOrders((prev) => prev.map((ord) => (ord.id === orderId ? updatedOrder : ord)));
+    await api.updateOrder(orderId, updatedOrder);
+    await refreshSync();
+
+    if (printImmediately) {
+      setPrintOrder(updatedOrder);
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => setPrintOrder(null), 1000);
+      }, 150);
+    }
   };
 
-  const handleCloseAccount = (orderId: string, paymentMethod: PaymentMethod, changeFor?: number) => {
+  const handleCloseAccount = async (
+    orderId: string,
+    paymentMethod: PaymentMethod,
+    changeFor?: number
+  ) => {
+    const updates: Partial<Order> = {
+      status: 'entregue',
+      paymentMethod,
+      needChangeFor: changeFor,
+      updatedAt: new Date().toISOString(),
+    };
     setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id !== orderId) return ord;
-        const updated: Order = {
-          ...ord,
-          status: 'entregue',
-          paymentMethod,
-          needChangeFor: changeFor,
-          updatedAt: new Date().toISOString(),
-        };
-        api.updateOrderStatus(orderId, 'entregue');
-        return updated;
-      })
+      prev.map((ord) => (ord.id === orderId ? { ...ord, ...updates } : ord))
     );
+    await api.updateOrder(orderId, updates);
+    await refreshSync();
   };
 
   const handleManualPrintOrder = (order: Order) => {
@@ -280,9 +244,8 @@ export default function App() {
     setIsReceiptModalOpen(true);
   };
 
-  // Menu Management Handlers
+  // Menu Management Handlers (Persisted on Server)
   const handleSaveMenuItem = async (item: MenuItem) => {
-    unmarkLocalDeletedId(item.id);
     setMenuItems((prev) => {
       const idx = prev.findIndex((i) => i.id === item.id);
       if (idx >= 0) {
@@ -292,39 +255,27 @@ export default function App() {
       }
       return [...prev, item];
     });
-    try {
-      await api.saveProduct(item);
-      await refreshSync();
-    } catch (e) {
-      console.warn('Erro ao salvar produto:', e);
-    }
+    await api.saveProduct(item);
+    await refreshSync();
   };
 
-  const handleBulkSaveMenuItems = async (newItems: MenuItem[], replaceExisting: boolean = false) => {
+  const handleBulkSaveMenuItems = async (
+    newItems: MenuItem[],
+    replaceExisting: boolean = false
+  ) => {
     if (replaceExisting) {
-      try {
-        localStorage.removeItem('pastelaria_deleted_ids');
-        localStorage.setItem('pastelaria_menu_items', JSON.stringify(newItems));
-      } catch (e) {
-        console.warn(e);
-      }
       setMenuItems(newItems);
-      try {
-        await api.saveProductsBulk(newItems, true);
-        await refreshSync();
-      } catch (e) {
-        console.warn('Erro ao substituir cardápio em massa:', e);
-      }
+      await api.saveProductsBulk(newItems, true);
+      await refreshSync();
       return;
     }
 
-    newItems.forEach((it) => {
-      if (it.id) unmarkLocalDeletedId(it.id);
-    });
     setMenuItems((prev) => {
       const copy = [...prev];
       newItems.forEach((item) => {
-        const idx = copy.findIndex((i) => i.id === item.id || i.name.toLowerCase() === item.name.toLowerCase());
+        const idx = copy.findIndex(
+          (i) => i.id === item.id || i.name.toLowerCase() === item.name.toLowerCase()
+        );
         if (idx >= 0) {
           copy[idx] = item;
         } else {
@@ -333,35 +284,29 @@ export default function App() {
       });
       return copy;
     });
-    try {
-      await api.saveProductsBulk(newItems, false);
-      await refreshSync();
-    } catch (e) {
-      console.warn('Erro ao salvar produtos em massa:', e);
-    }
+    await api.saveProductsBulk(newItems, false);
+    await refreshSync();
   };
 
-  const handleDeleteMenuItem = (itemId: string) => {
-    saveLocalDeletedId(itemId);
+  const handleDeleteMenuItem = async (itemId: string) => {
     setMenuItems((prev) => prev.filter((i) => i.id !== itemId));
-    api.deleteProduct(itemId);
+    await api.deleteProduct(itemId);
+    await refreshSync();
   };
 
-  const handleToggleItemAvailability = (itemId: string) => {
+  const handleToggleItemAvailability = async (itemId: string) => {
+    const target = menuItems.find((i) => i.id === itemId);
+    if (!target) return;
+    const updated = !target.available;
     setMenuItems((prev) =>
-      prev.map((i) => {
-        if (i.id === itemId) {
-          const updated = !i.available;
-          api.updateAvailability(itemId, updated);
-          return { ...i, available: updated };
-        }
-        return i;
-      })
+      prev.map((i) => (i.id === itemId ? { ...i, available: updated } : i))
     );
+    await api.updateAvailability(itemId, updated);
+    await refreshSync();
   };
 
-  // Extras Handlers
-  const handleSaveExtra = (extra: ExtraOption) => {
+  // Extras Handlers (Persisted on Server)
+  const handleSaveExtra = async (extra: ExtraOption) => {
     setExtras((prev) => {
       const idx = prev.findIndex((e) => e.id === extra.id);
       if (idx >= 0) {
@@ -371,35 +316,43 @@ export default function App() {
       }
       return [...prev, extra];
     });
+    await api.saveExtra(extra);
+    await refreshSync();
   };
 
-  const handleDeleteExtra = (extraId: string) => {
+  const handleDeleteExtra = async (extraId: string) => {
     setExtras((prev) => prev.filter((e) => e.id !== extraId));
+    await api.deleteExtra(extraId);
+    await refreshSync();
   };
 
-  // Settings Handlers
-  const handleSaveSettings = (newSettings: StoreSettings) => {
+  // Settings Handlers (Persisted on Server)
+  const handleSaveSettings = async (newSettings: StoreSettings) => {
     setSettings(newSettings);
+    await api.saveSettings(newSettings);
+    await refreshSync();
   };
 
-  // Reset to initial demo data
-  const handleResetDemoData = () => {
-    if (confirm('Deseja restaurar o cardápio e dados de demonstração originais?')) {
-      setMenuItems(INITIAL_MENU_ITEMS);
-      setExtras(INITIAL_EXTRAS);
-      setSettings(INITIAL_SETTINGS);
-      setOrders(INITIAL_ORDERS);
+  // Reset to initial demo data on Server
+  const handleResetDemoData = async () => {
+    setConfirmingReset(false);
+    const bundle = await api.resetServerDemoData();
+    if (bundle) {
+      setMenuItems(bundle.products);
+      setExtras(bundle.extras);
+      if (bundle.settings) setSettings(bundle.settings);
+      setOrders(bundle.orders);
       setCart([]);
-      localStorage.clear();
-      alert('Dados restaurados com sucesso!');
     }
   };
 
-  const activeOrdersCount = orders.filter((o) => o.status !== 'entregue' && o.status !== 'cancelado').length;
+  const activeOrdersCount = orders.filter(
+    (o) => o.status !== 'entregue' && o.status !== 'cancelado'
+  ).length;
   const currentTrackingOrder = orders.find((o) => o.id === trackingOrderId) || orders[0];
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50 text-stone-900 w-full overflow-x-hidden">
+    <div className="min-h-screen flex flex-col text-stone-900 w-full overflow-x-hidden">
       {/* Printable receipt for thermal printer & optional preview modal */}
       <ThermalReceipt
         order={printOrder}
@@ -448,7 +401,7 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
-        {/* CUSTOMER MODE (100% Free - No login required for customers!) */}
+        {/* CUSTOMER MODE */}
         {mode === 'cliente' && (
           <>
             {clienteTab === 'menu' && (
@@ -472,13 +425,13 @@ export default function App() {
                     onBackToMenu={() => setClienteTab('menu')}
                   />
                 ) : (
-                  <div className="max-w-md mx-auto text-center py-16 space-y-4">
-                    <p className="text-base text-stone-600 font-semibold">
+                  <div className="max-w-md mx-auto card-3d rounded-3xl text-center p-10 my-10 space-y-4">
+                    <p className="text-base text-stone-700 font-bold">
                       Você ainda não tem nenhum pedido em andamento.
                     </p>
                     <button
                       onClick={() => setClienteTab('menu')}
-                      className="px-5 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-bold hover:bg-amber-700 cursor-pointer"
+                      className="px-5 py-3 btn-3d-amber rounded-2xl text-xs font-bold cursor-pointer"
                     >
                       Ver Cardápio & Fazer Pedido
                     </button>
@@ -489,30 +442,30 @@ export default function App() {
           </>
         )}
 
-        {/* MANAGEMENT / GESTÃO MODE (Protected by JWT Authentication) */}
+        {/* MANAGEMENT / GESTÃO MODE */}
         {mode === 'gestao' && (
           <>
             {!currentUser ? (
-              <div className="max-w-md mx-auto my-12 bg-white rounded-3xl p-8 border border-stone-200 shadow-sm text-center space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-                  <Lock className="w-7 h-7" />
+              <div className="max-w-md mx-auto my-12 card-3d rounded-3xl p-8 text-center space-y-4">
+                <div className="w-14 h-14 rounded-2xl btn-3d-amber flex items-center justify-center mx-auto">
+                  <Lock className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-xl font-bold font-heading text-stone-900">
+                <h3 className="text-xl font-black font-heading text-stone-900">
                   Área Restrita da Gerência
                 </h3>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Esta seção é protegida por token JWT e reservada exclusivamente para o dono e funcionários da pastelaria. Clientes podem fazer pedidos livremente no cardápio sem login!
+                  Esta seção é protegida por autenticação no servidor e reservada exclusivamente para a gerência e equipe.
                 </p>
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
                   <button
                     onClick={() => setIsLoginModalOpen(true)}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs"
+                    className="w-full sm:w-auto px-5 py-3 btn-3d-amber rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    Fazer Login do Dono
+                    Entrar na Gerência
                   </button>
                   <button
                     onClick={() => setMode('cliente')}
-                    className="w-full sm:w-auto px-4 py-2.5 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold hover:bg-stone-50 cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-3 btn-3d-white rounded-xl text-xs font-bold cursor-pointer"
                   >
                     Voltar ao Cardápio
                   </button>
@@ -567,10 +520,7 @@ export default function App() {
                 {gestaoTab === 'financeiro' && <FinancialReports orders={orders} />}
 
                 {gestaoTab === 'config' && (
-                  <StoreSettingsView
-                    settings={settings}
-                    onSaveSettings={handleSaveSettings}
-                  />
+                  <StoreSettingsView settings={settings} onSaveSettings={handleSaveSettings} />
                 )}
               </div>
             )}
@@ -605,7 +555,7 @@ export default function App() {
         />
       )}
 
-      {/* Login Modal for Owner */}
+      {/* Login Modal for Owner & Team */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
@@ -623,9 +573,9 @@ export default function App() {
       />
 
       {/* Footer */}
-      <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-xs text-stone-500">
+      <footer className="border-t border-stone-200/80 bg-white/80 py-6 mt-12 text-xs text-stone-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-stone-800">{settings.storeName}</span>
             <span aria-hidden="true">·</span>
             <span>{settings.address}</span>
@@ -633,29 +583,38 @@ export default function App() {
             <span>WhatsApp: {settings.whatsappNumber}</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Live Sync Status indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 text-[11px] font-medium text-stone-600">
-              <span className={`w-2 h-2 rounded-full ${syncStatus === 'synced' ? 'bg-emerald-500' : syncStatus === 'syncing' ? 'bg-amber-500 animate-pulse' : 'bg-red-400'}`} />
-              <span>
-                {syncStatus === 'synced' ? 'Cardápio sincronizado ao vivo' : syncStatus === 'syncing' ? 'Sincronizando...' : 'Modo local'}
-              </span>
+          {currentUser && (
+            <div className="flex items-center gap-3">
+              {confirmingReset ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-stone-700 font-semibold">Restaurar padrão?</span>
+                  <button
+                    onClick={handleResetDemoData}
+                    className="px-2.5 py-1 rounded-lg bg-red-600 text-white font-bold cursor-pointer"
+                  >
+                    Sim
+                  </button>
+                  <button
+                    onClick={() => setConfirmingReset(false)}
+                    className="px-2.5 py-1 rounded-lg bg-stone-200 text-stone-700 font-semibold cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingReset(true)}
+                  className="flex items-center gap-1 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Restaurar Padrão</span>
+                </button>
+              )}
             </div>
-
-            <button
-              onClick={handleResetDemoData}
-              className="flex items-center gap-1 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-              title="Restaurar dados padrão de teste"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restaurar Demonstração</span>
-            </button>
-            <span className="text-stone-400">Sistema para Pastelaria & Delivery</span>
-          </div>
+          )}
         </div>
       </footer>
 
-      {/* Floating mobile PWA install banner */}
       <PWAInstallBanner />
     </div>
   );

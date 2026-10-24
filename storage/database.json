@@ -154,5 +154,87 @@
       "role": "GERENTE",
       "createdAt": "2026-10-15T23:06:56.205Z"
     }
-  ]
+  ],
+  "extras": [
+    {
+      "id": "ext-catupiry",
+      "name": "Catupiry Original",
+      "price": 4.5,
+      "category": "recheio"
+    },
+    {
+      "id": "ext-queijo",
+      "name": "Mussarela Extra",
+      "price": 4,
+      "category": "recheio"
+    },
+    {
+      "id": "ext-bacon",
+      "name": "Bacon Crocante",
+      "price": 3.5,
+      "category": "recheio"
+    },
+    {
+      "id": "ext-cheddar",
+      "name": "Cheddar Cremoso",
+      "price": 3.5,
+      "category": "recheio"
+    },
+    {
+      "id": "ext-ovo",
+      "name": "Ovo Picadinho",
+      "price": 2,
+      "category": "recheio"
+    },
+    {
+      "id": "ext-milho",
+      "name": "Milho Verde",
+      "price": 2,
+      "category": "recheio"
+    },
+    {
+      "id": "ext-vinagrete",
+      "name": "Vinagrete da Feira",
+      "price": 0,
+      "category": "molho"
+    },
+    {
+      "id": "ext-maioneseverde",
+      "name": "Maionese Verde Artesanal",
+      "price": 2.5,
+      "category": "molho"
+    },
+    {
+      "id": "ext-pimenta",
+      "name": "Molho de Pimenta da Casa",
+      "price": 1.5,
+      "category": "molho"
+    },
+    {
+      "id": "ext-massatradicional",
+      "name": "Massa Tradicional Sequinha",
+      "price": 0,
+      "category": "massa"
+    },
+    {
+      "id": "ext-massapimenta",
+      "name": "Massa Levemente Apimentada",
+      "price": 2,
+      "category": "massa"
+    }
+  ],
+  "settings": {
+    "storeName": "Pastelaria Santo Grau",
+    "slogan": "Massa artesanal sequinha, crocante e muito recheada!",
+    "whatsappNumber": "5511999998888",
+    "pixKey": "11999998888",
+    "pixKeyType": "telefone",
+    "address": "Rua do Comércio, 345 - Bairro Central",
+    "openingHours": "Terça a Domingo: 17:00 às 23:30",
+    "defaultDeliveryFee": 5,
+    "isOpen": true,
+    "soundAlertsEnabled": true,
+    "minOrderValue": 15,
+    "instagram": "@pastelaria_santograu"
+  }
 }

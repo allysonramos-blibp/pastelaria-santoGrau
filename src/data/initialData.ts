@@ -155,7 +155,7 @@ export const INITIAL_ORDERS: Order[] = [
     items: [
       {
         id: 'cart-1',
-        menuItem: INITIAL_MENU_ITEMS[0], // Carne
+        menuItem: INITIAL_MENU_ITEMS[0], // Pastel de Carne Tradicional
         selectedSize: { name: 'Médio (20cm)', priceDelta: 0 },
         extras: [
           { id: 'ext-catupiry', name: 'Catupiry Original', price: 4.5, category: 'recheio' },
@@ -163,24 +163,24 @@ export const INITIAL_ORDERS: Order[] = [
         ],
         notes: 'Capricha no vinagrete por favor!',
         quantity: 2,
-        unitPrice: 17.5,
-        totalPrice: 35.0,
+        unitPrice: 18.5,
+        totalPrice: 37.0,
       },
       {
         id: 'cart-2',
-        menuItem: INITIAL_MENU_ITEMS[16], // Caldo de cana 400
+        menuItem: INITIAL_MENU_ITEMS[5], // Caldo de Cana Gelado 500ml
         extras: [],
         notes: 'Com limão espremido',
         quantity: 2,
-        unitPrice: 7.0,
-        totalPrice: 14.0,
+        unitPrice: 8.0,
+        totalPrice: 16.0,
       },
     ],
-    subtotal: 49.0,
+    subtotal: 53.0,
     deliveryFee: 5.0,
-    total: 54.0,
+    total: 58.0,
     status: 'novo',
-    createdAt: new Date(Date.now() - 1000 * 60 * 6).toISOString(), // 6 mins ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 6).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 6).toISOString(),
     notes: 'Campainha está com defeito, por favor buzinar.',
   },
@@ -195,38 +195,38 @@ export const INITIAL_ORDERS: Order[] = [
     items: [
       {
         id: 'cart-3',
-        menuItem: INITIAL_MENU_ITEMS[6], // Carne seca com coalho
+        menuItem: INITIAL_MENU_ITEMS[3], // Pastel de Camarão com Catupiry
         selectedSize: { name: 'Médio (20cm)', priceDelta: 0 },
         extras: [
           { id: 'ext-maioneseverde', name: 'Maionese Verde Artesanal', price: 2.5, category: 'molho' },
         ],
         quantity: 1,
-        unitPrice: 21.0,
-        totalPrice: 21.0,
+        unitPrice: 24.5,
+        totalPrice: 24.5,
       },
       {
         id: 'cart-4',
-        menuItem: INITIAL_MENU_ITEMS[1], // Queijo
+        menuItem: INITIAL_MENU_ITEMS[1], // Pastel de Queijo Especial
         selectedSize: { name: 'Gigante (30cm)', priceDelta: 6 },
         extras: [],
         quantity: 1,
-        unitPrice: 18.0,
-        totalPrice: 18.0,
+        unitPrice: 19.0,
+        totalPrice: 19.0,
       },
       {
         id: 'cart-5',
-        menuItem: INITIAL_MENU_ITEMS[18], // Coca lata
+        menuItem: INITIAL_MENU_ITEMS[6], // Coca-Cola Lata 350ml
         extras: [],
         quantity: 2,
         unitPrice: 6.0,
         totalPrice: 12.0,
       },
     ],
-    subtotal: 51.0,
+    subtotal: 55.5,
     deliveryFee: 0,
-    total: 51.0,
+    total: 55.5,
     status: 'em_preparo',
-    createdAt: new Date(Date.now() - 1000 * 60 * 18).toISOString(), // 18 mins ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
   },
   {
@@ -240,8 +240,7 @@ export const INITIAL_ORDERS: Order[] = [
     items: [
       {
         id: 'cart-6',
-        menuItem: INITIAL_MENU_ITEMS[10], // Nutella com morango
-        selectedSize: { name: 'Individual (18cm)', priceDelta: 0 },
+        menuItem: INITIAL_MENU_ITEMS[4], // Pastel de Nutella com Morango
         extras: [],
         quantity: 2,
         unitPrice: 16.5,
@@ -252,7 +251,7 @@ export const INITIAL_ORDERS: Order[] = [
     deliveryFee: 0,
     total: 33.0,
     status: 'pronto',
-    createdAt: new Date(Date.now() - 1000 * 60 * 28).toISOString(), // 28 mins ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 28).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
     notes: 'Cliente ligou avisando que está a 5 minutos do balcão.',
   },

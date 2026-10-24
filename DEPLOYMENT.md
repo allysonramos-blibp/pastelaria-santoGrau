@@ -24,15 +24,16 @@ Este guia ensina como colocar o **Pastelaria Santo Grau** no ar com sincronizaç
 
 1. No **[render.com](https://render.com)**, clique em **"New +"** > **"Web Service"**.
 2. Conecte seu repositório GitHub.
-3. Configure:
+3. Configure os campos no Render:
    - **Name:** `pastelaria-santo-grau`
-   - **Environment:** `Node`
-   - **Build Command:** `npm install && npm run build`
+   - **Root Directory:** *(Deixe totalmente em branco ou vazio)* ⚠️ **Não digite `backend-spring-boot` aqui! Os arquivos estão na raiz do projeto.**
+   - **Environment / Runtime:** `Node`
+   - **Build Command:** `npm install --legacy-peer-deps && npm run build`
    - **Start Command:** `npm start`
-4. Em **Environment Variables (Variáveis de Ambiente)**, clique em **"Add Environment Variable"** e adicione:
+4. Em **Environment Variables (Variáveis de Ambiente)**, adicione:
    - **Key:** `DATABASE_URL`
-   - **Value:** Cole aqui a sua nova connection string do Neon (`postgresql://neondb_owner:NOVA_SENHA@ep-...neon.tech/neondb?sslmode=require`)
+   - **Value:** Sua connection string do Neon (`postgresql://...`)
    - **Key:** `NODE_ENV`
    - **Value:** `production`
-5. Clique em **"Create Web Service"** (ou Deploy).
-6. O Render subirá o servidor Node.js com o cardápio, pedidos e sincronização com o Neon de forma 100% segura e encriptada!
+5. Clique em **"Save Changes"** (ou crie o serviço) e depois em **"Manual Deploy" > "Deploy latest commit"**.
+6. O Render subirá o servidor Node.js com o cardápio, pedidos e sincronização com o Neon!

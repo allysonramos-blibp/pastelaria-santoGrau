@@ -292,7 +292,6 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !price) {
-      alert('Nome e preço são obrigatórios');
       return;
     }
 
@@ -346,18 +345,18 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header & Subtabs */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 card-3d p-4 sm:p-5 rounded-3xl">
         <div>
-          <h2 className="text-base sm:text-lg font-bold font-heading text-stone-900">
+          <h2 className="text-base sm:text-xl font-black font-heading text-stone-900">
             Cardápio & Ingredientes
           </h2>
           <p className="text-xs text-stone-500">
-            Gerencie sabores, tamanhos, adicionais e controle o que está disponível hoje
+            Gerencie sabores, tamanhos, adicionais e controle o que está disponível hoje no servidor
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-semibold">
+          <div className="flex bg-stone-100 p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setActiveTab('items')}
               className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-center ${
@@ -386,7 +385,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                   setBulkSuccessMsg(null);
                   setIsBulkModalOpen(true);
                 }}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl btn-3d-white font-bold text-xs cursor-pointer"
                 title="Inserir múltiplos itens de uma só vez"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -397,7 +396,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
               <button
                 type="button"
                 onClick={openCreateModal}
-                className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors active:scale-95"
+                className="flex items-center justify-center gap-1 px-3.5 py-2 rounded-xl btn-3d-amber font-bold text-xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Novo</span>
@@ -408,7 +407,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
                 <button
                   type="button"
                   onClick={onRefreshSync}
-                  className="p-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer transition-colors active:scale-95"
+                  className="p-2 rounded-xl btn-3d-white font-bold text-xs cursor-pointer"
                   title="Sincronizar com o banco de dados agora"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${syncStatus === 'syncing' ? 'animate-spin text-amber-600' : 'text-stone-500'}`} />

@@ -1,4 +1,4 @@
-import { serverDb } from './server-db.js';
+import { serverDb, createAuthToken, verifyAuthToken } from './server-db.js';
 
 export function viteApiPlugin() {
   return {
@@ -10,7 +10,6 @@ export function viteApiPlugin() {
           return next();
         }
 
-        // Helper to read request body
         const readBody = () =>
           new Promise((resolve) => {
             let body = '';
@@ -36,13 +35,29 @@ export function viteApiPlugin() {
           return res.end();
         }
 
-        const pathOnly = url.split('?')[0];
+        const [pathOnly, queryString = ''] = url.split('?');
+        const parts = pathOnly.split('/');
 
         try {
+          // 1. Health Check
           if (pathOnly === '/api/health' && req.method === 'GET') {
-            return res.end(JSON.stringify({ status: 'UP', service: 'Pastelaria Santo Grau Dev API' }));
+            return res.end(
+              JSON.stringify({ status: 'UP', service: 'Pastelaria Santo Grau API', time: new Date().toISOString() })
+            );
           }
 
+          // 2. Full Server Sync Bundle
+          if (pathOnly === '/api/sync' && req.method === 'GET') {
+            return res.end(JSON.stringify(serverDb.getSyncBundle()));
+          }
+
+          // 3. Reset Demo Data
+          if (pathOnly === '/api/reset' && req.method === 'POST') {
+            const bundle = serverDb.resetDemoData();
+            return res.end(JSON.stringify({ success: true, bundle }));
+          }
+
+          // 4. Products API
           if (pathOnly === '/api/products') {
             if (req.method === 'GET') {
               return res.end(JSON.stringify(serverDb.getProducts()));
@@ -56,16 +71,18 @@ export function viteApiPlugin() {
 
           if (pathOnly === '/api/products/bulk' && req.method === 'POST') {
             const body = await readBody();
-            const list = Array.isArray(body) ? body : (body?.items || []);
-            const replaceAll = Boolean(body?.replaceAll || body?.replace || (parsedUrl.query && parsedUrl.query.includes('replace=true')));
+            const list = Array.isArray(body) ? body : body?.items || [];
+            const replaceAll = Boolean(
+              body?.replaceAll || body?.replace || queryString.includes('replace=true')
+            );
             const saved = serverDb.saveProductsBulk(list, replaceAll);
-            return res.end(JSON.stringify({ success: true, count: saved.length, products: saved, replaced: replaceAll }));
+            return res.end(
+              JSON.stringify({ success: true, count: saved.length, products: saved, replaced: replaceAll })
+            );
           }
 
           if (pathOnly.startsWith('/api/products/')) {
-            const parts = pathOnly.split('/');
-            const id = parts[3];
-
+            const id = decodeURIComponent(parts[3] || '');
             if (req.method === 'DELETE') {
               const ok = serverDb.deleteProduct(id);
               return res.end(JSON.stringify({ success: ok, deletedId: id }));
@@ -86,6 +103,37 @@ export function viteApiPlugin() {
             return res.end(JSON.stringify({ deletedProductIds: serverDb.getDeletedProductIds() }));
           }
 
+          // 5. Extras (Adicionais) API
+          if (pathOnly === '/api/extras') {
+            if (req.method === 'GET') {
+              return res.end(JSON.stringify(serverDb.getExtras()));
+            }
+            if (req.method === 'POST') {
+              const body = await readBody();
+              const saved = serverDb.saveExtra(body);
+              return res.end(JSON.stringify(saved));
+            }
+          }
+
+          if (pathOnly.startsWith('/api/extras/') && req.method === 'DELETE') {
+            const id = decodeURIComponent(parts[3] || '');
+            const ok = serverDb.deleteExtra(id);
+            return res.end(JSON.stringify({ success: ok }));
+          }
+
+          // 6. Store Settings API
+          if (pathOnly === '/api/settings') {
+            if (req.method === 'GET') {
+              return res.end(JSON.stringify(serverDb.getSettings()));
+            }
+            if (req.method === 'PUT' || req.method === 'POST') {
+              const body = await readBody();
+              const saved = serverDb.saveSettings(body);
+              return res.end(JSON.stringify(saved));
+            }
+          }
+
+          // 7. Orders API
           if (pathOnly === '/api/orders') {
             if (req.method === 'GET') {
               return res.end(JSON.stringify(serverDb.getOrders()));
@@ -97,14 +145,48 @@ export function viteApiPlugin() {
             }
           }
 
-          if (pathOnly.startsWith('/api/orders/') && parts(pathOnly)[4] === 'status' && req.method === 'PATCH') {
-            const id = pathOnly.split('/')[3];
-            const body = await readBody();
-            const ok = serverDb.updateOrderStatus(id, body.status);
-            return res.end(JSON.stringify({ success: ok }));
+          if (pathOnly.startsWith('/api/orders/')) {
+            const id = decodeURIComponent(parts[3] || '');
+            if (parts[4] === 'status' && req.method === 'PATCH') {
+              const body = await readBody();
+              const ok = serverDb.updateOrderStatus(id, body.status);
+              return res.end(JSON.stringify({ success: ok }));
+            }
+            if (req.method === 'PUT' || req.method === 'PATCH') {
+              const body = await readBody();
+              const updated = serverDb.updateOrder(id, body);
+              return res.end(JSON.stringify({ success: !!updated, order: updated }));
+            }
           }
 
-                    if (pathOnly === '/api/users') {
+          // 8. Authentication & Users API
+          if (pathOnly === '/api/auth/login' && req.method === 'POST') {
+            const body = await readBody();
+            const { username, password } = body;
+            const user = serverDb.getUserByCredentials(username, password);
+            if (!user) {
+              res.statusCode = 401;
+              return res.end(
+                JSON.stringify({
+                  error: 'Usuário ou senha incorretos. Verifique os dados informados.',
+                })
+              );
+            }
+            const token = createAuthToken(user);
+            return res.end(JSON.stringify({ success: true, token, user }));
+          }
+
+          if (pathOnly === '/api/auth/me' && req.method === 'GET') {
+            const authHeader = req.headers['authorization'] || '';
+            const user = verifyAuthToken(authHeader);
+            if (!user) {
+              res.statusCode = 401;
+              return res.end(JSON.stringify({ error: 'Sessão inválida ou expirada.' }));
+            }
+            return res.end(JSON.stringify({ success: true, user }));
+          }
+
+          if (pathOnly === '/api/users') {
             if (req.method === 'GET') {
               return res.end(JSON.stringify(serverDb.getUsers()));
             }
@@ -115,46 +197,34 @@ export function viteApiPlugin() {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({ error: 'Nome e usuário são obrigatórios.' }));
               }
-              const cleanUsername = username.trim().toLowerCase();
-              const existing = serverDb.getUsers().find((u) => u.username.toLowerCase() === cleanUsername);
-              if (existing) {
-                res.statusCode = 409;
-                return res.end(JSON.stringify({ error: 'Este nome de usuário já está em uso.' }));
-              }
-              const newUser = {
-                id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              const saved = serverDb.saveUser({
+                id: body.id || `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                 name: name.trim(),
-                username: cleanUsername,
+                username: username.trim().toLowerCase(),
                 password: password || '123',
                 role: role || 'GERENTE',
                 createdAt: new Date().toISOString(),
-              };
-              const saved = serverDb.saveUser(newUser);
+              });
               res.statusCode = 201;
               return res.end(JSON.stringify(saved));
             }
           }
 
-          if (pathOnly.startsWith('/api/users/') && req.method === 'DELETE') {
-            const id = pathOnly.split('/')[3];
-            const ok = serverDb.deleteUser(id);
-            return res.end(JSON.stringify({ success: ok }));
-          }
-
-          if (pathOnly === '/api/auth/login' && req.method === 'POST') {
-            const body = await readBody();
-            const { username, password } = body;
-            const user = serverDb.getUserByCredentials(username, password);
-            if (!user) {
-              res.statusCode = 401;
-              return res.end(JSON.stringify({ error: 'Usuário ou senha incorretos.' }));
+          if (pathOnly.startsWith('/api/users/')) {
+            const id = decodeURIComponent(parts[3] || '');
+            if (req.method === 'PUT' || req.method === 'PATCH') {
+              const body = await readBody();
+              const updated = serverDb.updateUser(id, body);
+              if (!updated) {
+                res.statusCode = 404;
+                return res.end(JSON.stringify({ error: 'Usuário não encontrado.' }));
+              }
+              return res.end(JSON.stringify(updated));
             }
-            const token = `jwt-${Buffer.from(JSON.stringify({ sub: user.username, role: user.role, time: Date.now() })).toString('base64')}`;
-            return res.end(JSON.stringify({ success: true, token, user }));
-          }
-
-          if (pathOnly === '/api/sync' && req.method === 'GET') {
-            return res.end(JSON.stringify(serverDb.getSyncBundle()));
+            if (req.method === 'DELETE') {
+              const ok = serverDb.deleteUser(id);
+              return res.end(JSON.stringify({ success: ok }));
+            }
           }
 
           return next();
@@ -166,8 +236,4 @@ export function viteApiPlugin() {
       });
     },
   };
-}
-
-function parts(p) {
-  return p.split('/');
 }

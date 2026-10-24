@@ -13,120 +13,143 @@ export interface AuthSession {
   expiresAt: number;
 }
 
-const AUTH_STORAGE_KEY = 'pastelaria_auth_session';
-const USERS_STORAGE_KEY = 'pastelaria_users_db';
+const SESSION_KEY = 'pastelaria_jwt_session_v2';
 
-// Initial pre-configured accounts
-const DEFAULT_INITIAL_USERS: AppUser[] = [
-  {
-    id: 'usr-admin-allyson',
-    name: 'Allyson (ADM)',
-    username: 'admin',
-    password: '123',
-    role: 'ADMIN',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'usr-alessandra-ramos',
-    name: 'Alessandra Ramos (Irmã)',
-    username: 'alessandraramos',
-    password: '2308',
-    role: 'GERENTE',
-    createdAt: new Date().toISOString(),
-  },
-];
+// Purge legacy localStorage databases so data never stays stuck in browser storage
+function purgeLegacyLocalStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    const legacyKeys = [
+      'pastelaria_users_db',
+      'pastelaria_auth_session',
+      'pastelaria_menu_items',
+      'pastelaria_extras',
+      'pastelaria_settings',
+      'pastelaria_orders',
+      'pastelaria_deleted_ids',
+      'pastelaria_api_config',
+    ];
+    legacyKeys.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+}
 
-// Encode a realistic JWT token with Header, Payload and Signature
-function createMockJwtToken(user: AuthUser): string {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const now = Math.floor(Date.now() / 1000);
-  const payload = btoa(
-    JSON.stringify({
-      sub: user.username,
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      iat: now,
-      exp: now + 60 * 60 * 24 * 7, // 7 days expiration
-      iss: 'pastelaria-santo-grau',
-    })
-  );
-  const signature = btoa('verified_signature_pastelaria_secret_2026');
-  return `${header}.${payload}.${signature}`;
+purgeLegacyLocalStorage();
+
+let memorySession: AuthSession | null = null;
+
+function readSession(): AuthSession | null {
+  if (memorySession) {
+    if (Date.now() > memorySession.expiresAt) {
+      memorySession = null;
+      try {
+        sessionStorage.removeItem(SESSION_KEY);
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+    return memorySession;
+  }
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed: AuthSession = JSON.parse(raw);
+    if (Date.now() > parsed.expiresAt) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    memorySession = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(session: AuthSession | null) {
+  memorySession = session;
+  try {
+    if (session) {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export const authService = {
-  // Check if user is currently authenticated
   isAuthenticated(): boolean {
-    const session = this.getSession();
-    if (!session) return false;
-    if (Date.now() > session.expiresAt) {
-      this.logout();
-      return false;
-    }
-    return true;
+    return readSession() !== null;
   },
 
   getSession(): AuthSession | null {
-    try {
-      const data = localStorage.getItem(AUTH_STORAGE_KEY);
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
+    return readSession();
   },
 
   getCurrentUser(): AuthUser | null {
-    const session = this.getSession();
-    return session ? session.user : null;
+    const s = readSession();
+    return s ? s.user : null;
   },
 
   getAuthToken(): string | null {
-    const session = this.getSession();
-    return session ? session.token : null;
+    const s = readSession();
+    return s ? s.token : null;
   },
 
-  // Get all registered users (for team management)
-  getRegisteredUsers(): AppUser[] {
+  // Verify active token against backend server
+  async verifyServerSession(): Promise<AuthUser | null> {
+    const token = this.getAuthToken();
+    if (!token) return null;
     try {
-      const raw = localStorage.getItem(USERS_STORAGE_KEY);
-      if (raw) {
-        const parsed: AppUser[] = JSON.parse(raw);
-        if (parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Erro ao ler usuários locais:', e);
-    }
-    // Initialize with default
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(DEFAULT_INITIAL_USERS));
-    return DEFAULT_INITIAL_USERS;
-  },
-
-  // Sync registered users from backend server
-  async fetchUsersFromServer(): Promise<AppUser[]> {
-    try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
       if (res.ok) {
-        const serverUsers: AppUser[] = await res.json();
-        if (serverUsers && serverUsers.length > 0) {
-          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(serverUsers));
-          return serverUsers;
+        const data = await res.json();
+        if (data?.user) {
+          const current = readSession();
+          if (current) {
+            writeSession({ ...current, user: data.user });
+          }
+          return data.user;
         }
+      } else if (res.status === 401) {
+        this.logout();
+        return null;
       }
     } catch {
-      // Offline fallback
+      // Network hiccup: preserve current memory session
     }
-    return this.getRegisteredUsers();
+    return this.getCurrentUser();
   },
 
-  // Register a new user (Sister, Partner, Manager, Waiter)
-  async register(data: {
+  // Fetch all team users directly from server database
+  async fetchUsersFromServer(): Promise<AppUser[]> {
+    const res = await fetch('/api/users', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      throw new Error('Falha ao buscar usuários do servidor.');
+    }
+    return await res.json();
+  },
+
+  // Create or update a team member on the server (does NOT overwrite current logged-in admin session)
+  async createTeamMember(data: {
     name: string;
     username: string;
     password: string;
     role: UserRole;
-  }): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
-    const cleanUser = data.username.trim().toLowerCase();
+  }): Promise<{ success: boolean; user?: AppUser; message?: string }> {
+    const cleanUser = data.username.trim().toLowerCase().replace(/^@/, '').replace(/\s+/g, '');
     const cleanName = data.name.trim();
     const cleanPass = data.password.trim();
 
@@ -140,79 +163,90 @@ export const authService = {
       return { success: false, message: 'A senha deve ter no mínimo 3 caracteres.' };
     }
 
-    const currentUsers = this.getRegisteredUsers();
-    if (currentUsers.some((u) => u.username.toLowerCase() === cleanUser)) {
-      return { success: false, message: 'Este nome de usuário já está cadastrado. Escolha outro.' };
-    }
-
-    const newUser: AppUser = {
-      id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: cleanName,
-      username: cleanUser,
-      password: cleanPass,
-      role: data.role,
-      createdAt: new Date().toISOString(),
-    };
-
-    // 1. Try to register on API backend
     try {
-      await fetch('/api/users', {
+      const token = this.getAuthToken();
+      const res = await fetch('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: cleanName,
+          username: cleanUser,
+          password: cleanPass,
+          role: data.role,
+        }),
       });
+
+      const body = await res.json();
+      if (!res.ok) {
+        return { success: false, message: body?.error || 'Erro ao salvar membro no servidor.' };
+      }
+      return { success: true, user: body };
     } catch {
-      // Offline or local
+      return { success: false, message: 'Erro de conexão com o servidor.' };
     }
-
-    // 2. Save in local database
-    const updated = [...currentUsers, newUser];
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updated));
-
-    // 3. Automatically log in with the new account
-    const authUser: AuthUser = {
-      id: newUser.id,
-      username: newUser.username,
-      name: newUser.name,
-      role: newUser.role,
-    };
-
-    const token = createMockJwtToken(authUser);
-    const session: AuthSession = {
-      token,
-      user: authUser,
-      expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
-    };
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-
-    return { success: true, user: authUser };
   },
 
-  // Delete a team member
-  async deleteUser(userId: string): Promise<boolean> {
-    const currentUsers = this.getRegisteredUsers();
-    // Cannot delete the primary admin
-    const filtered = currentUsers.filter((u) => u.id !== userId && u.username !== 'admin');
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filtered));
-
+  // Update an existing team member (password, role, or name) on the server
+  async updateTeamMember(
+    userId: string,
+    updates: { name?: string; username?: string; password?: string; role?: UserRole }
+  ): Promise<{ success: boolean; user?: AppUser; message?: string }> {
     try {
-      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const token = this.getAuthToken();
+      const res = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(updates),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        return { success: false, message: body?.error || 'Não foi possível atualizar o usuário.' };
+      }
+      return { success: true, user: body };
     } catch {
-      // Local fallback
+      return { success: false, message: 'Erro de conexão com o servidor.' };
     }
-
-    return true;
   },
 
-  // Login handler
+  // Delete a team member from the server
+  async deleteUser(userId: string): Promise<boolean> {
+    try {
+      const token = this.getAuthToken();
+      const res = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  // Strict server-side login (Works from any phone, tablet, or computer)
   async login(
     username: string,
     password: string
   ): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
-    const cleanUser = username.trim().toLowerCase();
+    const cleanUser = username.trim().toLowerCase().replace(/^@/, '').replace(/\s+/g, '');
     const cleanPass = password.trim();
 
-    // 1. Tenta autenticar na API do servidor se disponível
+    if (!cleanUser || !cleanPass) {
+      return {
+        success: false,
+        message: 'Informe seu usuário e senha para entrar.',
+      };
+    }
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -220,8 +254,9 @@ export const authService = {
         body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
+
+      if (res.ok && data?.user && data?.token) {
         const user: AuthUser = {
           id: data.user.id,
           username: data.user.username,
@@ -231,110 +266,25 @@ export const authService = {
         const session: AuthSession = {
           token: data.token,
           user,
-          expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
+          expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14, // 14 days
         };
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+        writeSession(session);
         return { success: true, user };
       }
+
+      return {
+        success: false,
+        message: data?.error || 'Usuário ou senha incorretos.',
+      };
     } catch {
-      // Backend offline, prossegue com validação local
+      return {
+        success: false,
+        message: 'Não foi possível conectar ao servidor de autenticação. Tente novamente.',
+      };
     }
-
-    // 2. Validação local contra os usuários registrados no sistema
-    const registeredUsers = this.getRegisteredUsers();
-    const matchedUser = registeredUsers.find((u) => {
-      const uName = (u.username || '').toLowerCase().replace(/\s+/g, '');
-      const uRealName = (u.name || '').toLowerCase().replace(/\s+/g, '');
-      const isUserMatch =
-        uName === cleanUser ||
-        uRealName.includes(cleanUser) ||
-        (cleanUser === 'irma' && (uName.includes('alessandra') || uRealName.includes('alessandra'))) ||
-        (cleanUser === 'alessandra' && (uName.includes('alessandra') || uRealName.includes('alessandra'))) ||
-        ((cleanUser === 'admin' || cleanUser === 'allyson' || cleanUser === 'dono') && uName === 'admin');
-
-      const isPassMatch =
-        !cleanPass ||
-        u.password === cleanPass ||
-        cleanPass === '2308' ||
-        cleanPass === '123' ||
-        cleanPass === 'admin' ||
-        cleanPass === '123456' ||
-        cleanPass === 'pastel';
-
-      return isUserMatch && isPassMatch;
-    });
-
-    if (matchedUser) {
-      const user: AuthUser = {
-        id: matchedUser.id,
-        username: matchedUser.username,
-        name: matchedUser.name,
-        role: matchedUser.role,
-      };
-
-      const token = createMockJwtToken(user);
-      const session: AuthSession = {
-        token,
-        user,
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
-      };
-
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-      return { success: true, user };
-    }
-
-    // 3. Fallback especial para Alessandra / Irmã ou Admin
-    if (
-      cleanUser.includes('alessandra') ||
-      cleanUser.includes('irma') ||
-      cleanUser.includes('ramos')
-    ) {
-      const user: AuthUser = {
-        id: 'usr-alessandra-ramos',
-        username: 'alessandraramos',
-        name: 'Alessandra Ramos (Irmã)',
-        role: 'GERENTE',
-      };
-      const token = createMockJwtToken(user);
-      const session: AuthSession = {
-        token,
-        user,
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
-      };
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-      return { success: true, user };
-    }
-
-    if (
-      cleanUser === 'admin' ||
-      cleanUser === 'allyson' ||
-      cleanUser === 'dono'
-    ) {
-      const user: AuthUser = {
-        id: 'usr-admin-allyson',
-        username: 'admin',
-        name: 'Allyson (ADM)',
-        role: 'ADMIN',
-      };
-
-      const token = createMockJwtToken(user);
-      const session: AuthSession = {
-        token,
-        user,
-        expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
-      };
-
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-      return { success: true, user };
-    }
-
-    return {
-      success: false,
-      message: 'Usuário ou senha incorretos. Verifique suas credenciais ou crie sua conta na aba "Criar Conta".',
-    };
   },
 
   logout(): void {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    writeSession(null);
   },
 };

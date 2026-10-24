@@ -161,14 +161,9 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
 
   // Launch order directly to the kitchen
   const handleSendToKitchen = () => {
-    const trimmedName = customerName.trim();
-    if (!trimmedName) {
-      alert('Por favor, informe o NOME DA PESSOA para identificar a comanda!');
-      return;
-    }
+    const trimmedName = customerName.trim() || 'Cliente Balcão';
 
     if (cart.length === 0) {
-      alert('Selecione pelo menos um pastel ou bebida para enviar.');
       return;
     }
 

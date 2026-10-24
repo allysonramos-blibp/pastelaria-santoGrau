@@ -14,74 +14,65 @@ export const PastelVisual: React.FC<PastelVisualProps> = ({
   imageUrl,
   className = 'h-44 w-full',
 }) => {
-  // If an image URL is supplied, render it with resilient error fallback
   const [hasError, setHasError] = React.useState(false);
 
   if (imageUrl && !hasError) {
     return (
-      <div className={`relative overflow-hidden bg-stone-100 ${className}`}>
+      <div className={`relative overflow-hidden bg-stone-900 ${className}`}>
         <img
           src={imageUrl}
           alt={name}
           referrerPolicy="no-referrer"
           onError={() => setHasError(true)}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/60 via-transparent to-transparent opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-white/10" />
       </div>
     );
   }
 
-  // Domain-crafted culinary SVG artwork with bubbly golden crust, artisan colors per category
   const getTheme = () => {
     switch (category) {
       case 'salgados':
         return {
-          bgGradient: 'from-amber-600 to-amber-700',
-          accent: '#f59e0b',
-          iconLabel: '🥟 Pastel Salgado Crocante',
-          sub: 'Massa fininha e sequinha',
+          bgGradient: 'from-amber-500 via-amber-600 to-amber-800',
+          iconLabel: 'Pastel Artesanal Crocante',
+          sub: 'Massa dourada frita na hora',
         };
       case 'especiais':
         return {
-          bgGradient: 'from-orange-700 to-stone-900',
-          accent: '#ea580c',
-          iconLabel: '⭐ Pastel Especial Gourmet',
-          sub: 'Recheio farto & selecionado',
+          bgGradient: 'from-orange-600 via-amber-700 to-stone-900',
+          iconLabel: 'Especial Gourmet Recheado',
+          sub: 'Ingredientes nobres selecionados',
         };
       case 'doces':
         return {
-          bgGradient: 'from-rose-600 to-amber-800',
-          accent: '#e11d48',
-          iconLabel: '🍓 Pastel Doce Artesanal',
-          sub: 'Com açúcar e canela',
+          bgGradient: 'from-rose-600 via-pink-700 to-amber-900',
+          iconLabel: 'Pastel Doce & Cremoso',
+          sub: 'Recheio generoso de confeitaria',
         };
       case 'combos':
         return {
-          bgGradient: 'from-yellow-600 to-amber-800',
-          accent: '#ca8a04',
-          iconLabel: '⚡ Combo Pastelaria + Bebida',
-          sub: 'Mais sabor por menos',
+          bgGradient: 'from-yellow-500 via-amber-600 to-stone-900',
+          iconLabel: 'Combo Especial da Casa',
+          sub: 'Pastel quentinho + bebida gelada',
         };
       case 'bebidas':
         return {
-          bgGradient: 'from-emerald-700 to-lime-900',
-          accent: '#10b981',
-          iconLabel: '🥤 Caldo de Cana & Bebidas',
-          sub: 'Geladinho na hora',
+          bgGradient: 'from-emerald-600 via-teal-700 to-stone-900',
+          iconLabel: 'Bebida Trincando de Gelada',
+          sub: 'Refrescância imediata',
         };
       case 'porcoes':
         return {
-          bgGradient: 'from-amber-700 to-stone-900',
-          accent: '#d97706',
-          iconLabel: '🥢 Mini Pastéis & Aperitivos',
-          sub: 'Perfeito para compartilhar',
+          bgGradient: 'from-amber-600 via-orange-700 to-stone-900',
+          iconLabel: 'Porção & Mini Pastéis',
+          sub: 'Crocância para compartilhar',
         };
       default:
         return {
-          bgGradient: 'from-amber-600 to-stone-800',
-          accent: '#f59e0b',
-          iconLabel: '🥟 Feito na Hora',
+          bgGradient: 'from-amber-600 via-amber-700 to-stone-900',
+          iconLabel: 'Feito na Hora',
           sub: 'Crocância incomparável',
         };
     }
@@ -93,89 +84,146 @@ export const PastelVisual: React.FC<PastelVisualProps> = ({
     <div
       className={`relative overflow-hidden bg-gradient-to-br ${theme.bgGradient} flex flex-col items-center justify-center p-4 text-white select-none ${className}`}
     >
-      {/* Decorative textured bubbly background pattern */}
-      <svg
-        className="absolute inset-0 w-full h-full opacity-15"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 200 120"
-        preserveAspectRatio="xMidYMid slice"
-      >
-        <circle cx="30" cy="20" r="14" fill="#fff" />
-        <circle cx="80" cy="80" r="22" fill="#fff" />
-        <circle cx="150" cy="30" r="18" fill="#fff" />
-        <circle cx="180" cy="90" r="12" fill="#fff" />
-        <circle cx="120" cy="60" r="8" fill="#fff" />
-      </svg>
+      {/* 3D Studio Lighting & Ambient Glow */}
+      <div
+        className="absolute -top-12 -left-12 w-36 h-36 rounded-full bg-white/20 blur-2xl pointer-events-none"
+        aria-hidden="true"
+      />
+      <div
+        className="absolute -bottom-10 -right-10 w-36 h-36 rounded-full bg-black/35 blur-2xl pointer-events-none"
+        aria-hidden="true"
+      />
 
-      {/* Pastel Shape Icon */}
-      <div className="relative z-10 flex flex-col items-center text-center">
+      {/* 3D Isometric Grid Floor Perspective */}
+      <div
+        className="absolute inset-0 opacity-15 pointer-events-none"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 50% 35%, rgba(255,255,255,0.45) 1.5px, transparent 1.5px)',
+          backgroundSize: '18px 18px',
+        }}
+        aria-hidden="true"
+      />
+
+      {/* 3D Sculpted Culinary Object with Floor Shadow */}
+      <div className="relative z-10 flex flex-col items-center text-center transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:scale-105">
         {category === 'bebidas' ? (
-          <svg
-            className="w-14 h-14 mb-2 drop-shadow-md text-emerald-200"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
-            <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
-            <line x1="6" y1="2" x2="6" y2="4" />
-            <line x1="10" y1="2" x2="10" y2="4" />
-            <line x1="14" y1="2" x2="14" y2="4" />
-          </svg>
+          <div className="relative mb-2">
+            {/* 3D Drop Shadow on surface */}
+            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-12 h-3 bg-black/40 rounded-full blur-xs" />
+            <svg
+              className="w-16 h-16 relative z-10 drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)]"
+              viewBox="0 0 64 64"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="cup3d" x1="16" y1="12" x2="48" y2="56" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#a7f3d0" />
+                  <stop offset="45%" stopColor="#34d399" />
+                  <stop offset="100%" stopColor="#065f46" />
+                </linearGradient>
+                <linearGradient id="lid3d" x1="14" y1="10" x2="50" y2="20" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="100%" stopColor="#cbd5e1" />
+                </linearGradient>
+              </defs>
+              {/* Straw */}
+              <path d="M36 4 L32 16" stroke="#fde047" strokeWidth="4" strokeLinecap="round" />
+              {/* 3D Cup Body */}
+              <path d="M18 18 L46 18 L42 54 C42 56.5 39.5 58 37 58 L27 58 C24.5 58 22 56.5 22 54 Z" fill="url(#cup3d)" />
+              {/* Specular 3D Highlight */}
+              <path d="M22 22 L25 52" stroke="white" strokeOpacity="0.55" strokeWidth="2.5" strokeLinecap="round" />
+              {/* 3D Rim */}
+              <rect x="15" y="13" width="34" height="6" rx="3" fill="url(#lid3d)" />
+            </svg>
+          </div>
         ) : category === 'porcoes' ? (
-          <svg
-            className="w-14 h-14 mb-2 drop-shadow-md text-amber-200"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="m8 12 3 3 5-5" />
-          </svg>
+          <div className="relative mb-2">
+            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-16 h-3 bg-black/40 rounded-full blur-xs" />
+            <svg
+              className="w-18 h-14 relative z-10 drop-shadow-[0_8px_12px_rgba(0,0,0,0.45)]"
+              viewBox="0 0 80 56"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="mini3d" x1="0" y1="0" x2="80" y2="56" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#fde68a" />
+                  <stop offset="50%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#92400e" />
+                </linearGradient>
+              </defs>
+              {/* Back Mini Pastel */}
+              <rect x="26" y="8" width="34" height="24" rx="5" transform="rotate(8 26 8)" fill="#d97706" stroke="#fef3c7" strokeWidth="1.5" />
+              {/* Front Left Mini Pastel */}
+              <rect x="12" y="18" width="34" height="24" rx="5" transform="rotate(-10 12 18)" fill="url(#mini3d)" stroke="#fef3c7" strokeWidth="1.5" />
+              {/* Front Right Mini Pastel */}
+              <rect x="36" y="20" width="34" height="24" rx="5" transform="rotate(6 36 20)" fill="url(#mini3d)" stroke="#fde68a" strokeWidth="1.5" />
+              <circle cx="28" cy="27" r="3" fill="#fffbeb" fillOpacity="0.8" />
+              <circle cx="52" cy="30" r="3.5" fill="#fffbeb" fillOpacity="0.8" />
+            </svg>
+          </div>
         ) : (
-          <svg
-            className="w-16 h-12 mb-1.5 drop-shadow-lg text-amber-200"
-            viewBox="0 0 72 44"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Authentic Brazilian pastel silhouette with crimped fork edges */}
-            <path
-              d="M6 10 C 18 6, 54 6, 66 10 L 64 36 C 52 40, 20 40, 8 36 Z"
-              fill="#fbbf24"
-              stroke="#f59e0b"
-              strokeWidth="2"
-            />
-            {/* Crimping marks on edges */}
-            <path
-              d="M9 13 L9 33 M13 11 L13 35 M59 11 L59 35 M63 13 L63 33"
-              stroke="#b45309"
-              strokeWidth="1.5"
-              strokeDasharray="2 2"
-            />
-            {/* Crisp bubbles on the surface */}
-            <ellipse cx="26" cy="20" rx="5" ry="3" fill="#fef3c7" opacity="0.8" />
-            <ellipse cx="45" cy="22" rx="7" ry="4" fill="#fef3c7" opacity="0.8" />
-            <ellipse cx="36" cy="28" rx="4" ry="2.5" fill="#fef3c7" opacity="0.8" />
-            <ellipse cx="52" cy="16" rx="3.5" ry="2" fill="#fef3c7" opacity="0.8" />
-          </svg>
+          <div className="relative mb-2">
+            {/* 3D Floor Shadow */}
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-20 h-3.5 bg-black/45 rounded-full blur-xs" />
+            <svg
+              className="w-22 h-15 relative z-10 drop-shadow-[0_10px_12px_rgba(0,0,0,0.45)]"
+              viewBox="0 0 88 54"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="pastelCrust3D" x1="10" y1="6" x2="78" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="38%" stopColor="#fbbf24" />
+                  <stop offset="78%" stopColor="#d97706" />
+                  <stop offset="100%" stopColor="#78350f" />
+                </linearGradient>
+                <linearGradient id="pastelSide3D" x1="8" y1="32" x2="80" y2="46" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#b45309" />
+                  <stop offset="100%" stopColor="#451a03" />
+                </linearGradient>
+              </defs>
+              {/* 3D Extruded Bottom Edge of the Pastel */}
+              <path
+                d="M10 35 C 24 41, 64 41, 78 35 L 75 42 C 62 47, 26 47, 13 42 Z"
+                fill="url(#pastelSide3D)"
+              />
+              {/* 3D Sculpted Top Puff Body */}
+              <path
+                d="M8 14 C 22 7, 66 7, 80 14 L 78 36 C 64 42, 24 42, 10 36 Z"
+                fill="url(#pastelCrust3D)"
+                stroke="#fef3c7"
+                strokeWidth="1.5"
+              />
+              {/* 3D Crimped Fork Seal Marks */}
+              <path
+                d="M13 15 L13 34 M17 13 L17 36 M71 13 L71 36 M75 15 L75 34"
+                stroke="#92400e"
+                strokeWidth="1.6"
+                strokeDasharray="2.5 2.5"
+              />
+              {/* 3D Glossy Specular Blisters */}
+              <ellipse cx="32" cy="21" rx="7" ry="4" fill="#fffbeb" fillOpacity="0.85" />
+              <ellipse cx="54" cy="24" rx="8.5" ry="4.5" fill="#fffbeb" fillOpacity="0.75" />
+              <ellipse cx="43" cy="31" rx="5" ry="2.8" fill="#fef3c7" fillOpacity="0.8" />
+              <ellipse cx="62" cy="17" rx="4" ry="2.2" fill="#fffbeb" fillOpacity="0.9" />
+            </svg>
+          </div>
         )}
 
-        <span className="text-xs font-semibold uppercase tracking-wider text-amber-100/90">
+        <span className="text-xs font-bold uppercase tracking-wider text-white drop-shadow-xs">
           {theme.iconLabel}
         </span>
-        <span className="text-[11px] text-stone-200/90 mt-0.5">
+        <span className="text-[11px] text-amber-100/90 mt-0.5 font-medium">
           {theme.sub}
         </span>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent" />
+      {/* Bottom vignette */}
+      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/45 to-transparent pointer-events-none" />
     </div>
   );
 };

@@ -78,7 +78,6 @@ export const PosTerminal: React.FC<PosTerminalProps> = ({
 
   const handleLaunchOrder = (printReceipt: boolean) => {
     if (cart.length === 0) {
-      alert('Adicione pelo menos um item ao pedido.');
       return;
     }
 
