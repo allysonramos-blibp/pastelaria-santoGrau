@@ -76,6 +76,8 @@ export const PosTerminal: React.FC<PosTerminalProps> = ({
     }
   };
 
+  const [posSuccessMessage, setPosSuccessMessage] = useState<string | null>(null);
+
   const handleLaunchOrder = (printReceipt: boolean) => {
     if (cart.length === 0) {
       return;
@@ -103,6 +105,9 @@ export const PosTerminal: React.FC<PosTerminalProps> = ({
     onOrderCreated(newOrder, printReceipt);
     playChimeSound();
 
+    setPosSuccessMessage(`Pedido #${orderNumber} (${newOrder.customerName}) enviado para a Cozinha! 🚀`);
+    setTimeout(() => setPosSuccessMessage(null), 3500);
+
     // Reset POS cart
     setCart([]);
     setCashReceived('');
@@ -111,6 +116,11 @@ export const PosTerminal: React.FC<PosTerminalProps> = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {posSuccessMessage && (
+        <div className="fixed top-20 right-4 z-50 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-xl font-bold text-sm animate-bounce">
+          {posSuccessMessage}
+        </div>
+      )}
       {/* LEFT: Products Grid (7 cols) */}
       <div className="lg:col-span-7 xl:col-span-8 space-y-4">
         {/* Category & Search Filter Bar */}

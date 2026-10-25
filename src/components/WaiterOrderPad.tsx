@@ -64,7 +64,7 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'all'>('all');
   const [search, setSearch] = useState('');
-  const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
+  const [printKitchenTicket, setPrintKitchenTicket] = useState(false);
 
   // Success Feedback Toast
   const [successToast, setSuccessToast] = useState<{ show: boolean; message: string }>({

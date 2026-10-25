@@ -863,44 +863,58 @@ export const CartCheckoutModal: React.FC<CartCheckoutModalProps> = ({
 
         {/* Footer controls */}
         {step !== 'success' && cart.length > 0 && (
-          <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-3">
-            {step === 'cart' ? (
-              <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs sm:text-sm font-semibold cursor-pointer transition"
-                >
-                  Continuar Escolhendo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep('checkout')}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95"
-                >
-                  <span>Avançar para Entrega</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setStep('cart')}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs sm:text-sm font-semibold cursor-pointer transition"
-                >
-                  Voltar ao Carrinho
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFinalizeOrder}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer"
-                >
-                  <span>Enviar Pedido pelo WhatsApp</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </>
+          <div className="p-4 bg-stone-50 border-t border-stone-200 space-y-2.5">
+            {step === 'checkout' && validationError && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{validationError}</span>
+              </div>
             )}
+            <div className="flex items-center justify-between gap-3">
+              {step === 'cart' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs sm:text-sm font-semibold cursor-pointer transition"
+                  >
+                    Continuar Escolhendo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValidationError(null);
+                      setStep('checkout');
+                    }}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95"
+                  >
+                    <span>Avançar para Entrega</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValidationError(null);
+                      setStep('cart');
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs sm:text-sm font-semibold cursor-pointer transition"
+                  >
+                    Voltar ao Carrinho
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFinalizeOrder}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer"
+                  >
+                    <span>Confirmar & Enviar Pedido</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

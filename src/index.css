@@ -17,7 +17,7 @@
    ========================================================================== */
 
 .perspective-stage {
-  perspective: 1200px;
+  position: relative;
 }
 
 /* 3D Elevated Surface Card */

@@ -8,7 +8,7 @@ interface CustomizeModalProps {
   item: MenuItem;
   availableExtras: ExtraOption[];
   onClose: () => void;
-  onAddToCart: (cartItem: CartItem) => void;
+  onAddToCart: (cartItem: CartItem, openCartAfter?: boolean) => void;
 }
 
 export const CustomizeModal: React.FC<CustomizeModalProps> = ({
@@ -36,7 +36,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = (openCartAfter: boolean = true) => {
     const cartItem: CartItem = {
       id: `${item.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       menuItem: item,
@@ -47,7 +47,7 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
       unitPrice,
       totalPrice,
     };
-    onAddToCart(cartItem);
+    onAddToCart(cartItem, openCartAfter);
     onClose();
   };
 
@@ -198,42 +198,52 @@ export const CustomizeModal: React.FC<CustomizeModalProps> = ({
           </div>
         </div>
 
-        {/* Footer with Quantity & Add Button */}
-        <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between gap-3">
-          {/* Quantity stepper */}
-          <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl p-1 shrink-0">
+        {/* Footer with Quantity & Add Buttons */}
+        <div className="p-4 bg-stone-50 border-t border-stone-200 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            {/* Quantity stepper */}
+            <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl p-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+                className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
+                aria-label="Diminuir quantidade"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+              <span className="w-8 text-center font-bold text-sm tabular-nums text-stone-900">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 cursor-pointer"
+                aria-label="Aumentar quantidade"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Primary Submit CTA - Opens Cart/Checkout immediately */}
             <button
               type="button"
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              disabled={quantity <= 1}
-              className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 disabled:opacity-30 cursor-pointer"
-              aria-label="Diminuir quantidade"
+              onClick={() => handleConfirm(true)}
+              className="flex-1 flex items-center justify-between px-5 py-3 rounded-xl btn-3d-amber text-white font-bold text-sm cursor-pointer"
             >
-              <Minus className="w-4 h-4" />
-            </button>
-            <span className="w-8 text-center font-bold text-sm tabular-nums text-stone-900">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => setQuantity(quantity + 1)}
-              className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 cursor-pointer"
-              aria-label="Aumentar quantidade"
-            >
-              <Plus className="w-4 h-4" />
+              <span>Adicionar ao Pedido</span>
+              <span className="tabular-nums font-black">
+                {formatBRL(totalPrice)}
+              </span>
             </button>
           </div>
 
-          {/* Submit CTA */}
           <button
             type="button"
-            onClick={handleConfirm}
-            className="flex-1 flex items-center justify-between px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer"
+            onClick={() => handleConfirm(false)}
+            className="w-full py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 font-semibold text-xs transition-colors cursor-pointer"
           >
-            <span>Adicionar ao Pedido</span>
-            <span className="tabular-nums font-bold">
-              {formatBRL(totalPrice)}
-            </span>
+            + Adicionar à sacola e continuar escolhendo outros itens
           </button>
         </div>
       </div>

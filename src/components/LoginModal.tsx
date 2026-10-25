@@ -94,49 +94,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
             </div>
           )}
 
-          {/* Quick profile shortcuts for team members */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                Acesso Rápido da Equipe:
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('alessandraramos');
-                  setPassword('2308');
-                  setError(null);
-                }}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col ${
-                  username === 'alessandraramos'
-                    ? 'bg-amber-100/70 border-amber-500 text-amber-950 font-bold shadow-xs'
-                    : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700'
-                }`}
-              >
-                <span className="text-xs font-bold text-stone-900">Alessandra Ramos</span>
-                <span className="text-[10px] text-amber-700 font-medium">Gerência • Senha: 2308</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('admin');
-                  setPassword('123');
-                  setError(null);
-                }}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col ${
-                  username === 'admin'
-                    ? 'bg-amber-100/70 border-amber-500 text-amber-950 font-bold shadow-xs'
-                    : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700'
-                }`}
-              >
-                <span className="text-xs font-bold text-stone-900">Allyson (ADM)</span>
-                <span className="text-[10px] text-amber-700 font-medium">Administrador • Senha: 123</span>
-              </button>
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-bold text-stone-700 mb-1.5">
               Usuário de Acesso
@@ -150,7 +107,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 autoCorrect="off"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ex: alessandraramos ou admin"
+                placeholder="Digite seu usuário cadastrado"
                 className="w-full pl-10 pr-4 py-3 rounded-xl input-3d text-sm font-semibold text-stone-900 placeholder:text-stone-400 placeholder:font-normal"
                 required
               />

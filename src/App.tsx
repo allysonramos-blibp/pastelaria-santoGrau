@@ -70,13 +70,14 @@ export default function App() {
   });
 
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('synced');
+  const [cartToast, setCartToast] = useState<string | null>(null);
 
   const refreshSync = useCallback(async () => {
     try {
       setSyncStatus('syncing');
       const bundle = await api.syncCatalog();
       if (bundle) {
-        if (Array.isArray(bundle.products)) {
+        if (Array.isArray(bundle.products) && bundle.products.length > 0) {
           setMenuItems(bundle.products);
         }
         if (Array.isArray(bundle.extras) && bundle.extras.length > 0) {
@@ -86,7 +87,14 @@ export default function App() {
           setSettings(bundle.settings);
         }
         if (Array.isArray(bundle.orders)) {
-          setOrders(bundle.orders);
+          setOrders((prev) => {
+            const serverIds = new Set(bundle.orders.map((o) => o.id));
+            const now = Date.now();
+            const recentLocal = prev.filter(
+              (o) => !serverIds.has(o.id) && now - new Date(o.createdAt).getTime() < 45000
+            );
+            return [...recentLocal, ...bundle.orders];
+          });
         }
         setSyncStatus('synced');
       } else {
@@ -130,8 +138,14 @@ export default function App() {
   }, [refreshSync]);
 
   // Cart Handlers
-  const handleAddToCart = (newItem: CartItem) => {
+  const handleAddToCart = (newItem: CartItem, openCartAfter: boolean = true) => {
     setCart((prev) => [...prev, newItem]);
+    if (openCartAfter) {
+      setIsCartOpen(true);
+    } else {
+      setCartToast(`${newItem.quantity}x ${newItem.menuItem.name} adicionado ao seu pedido!`);
+      setTimeout(() => setCartToast(null), 3500);
+    }
   };
 
   const handleUpdateCartQuantity = (cartItemId: string, newQty: number) => {
@@ -161,8 +175,7 @@ export default function App() {
     if (settings.soundAlertsEnabled) {
       playChimeSound();
     }
-    await api.createOrder(newOrder);
-    await refreshSync();
+    api.createOrder(newOrder).then(() => refreshSync());
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
@@ -178,8 +191,6 @@ export default function App() {
   // POS & Waiter Order Handlers
   const handlePosOrderCreated = async (order: Order, printImmediately: boolean) => {
     setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
-    await api.createOrder(order);
-    await refreshSync();
     if (printImmediately) {
       setPrintOrder(order);
       setTimeout(() => {
@@ -187,6 +198,7 @@ export default function App() {
         setTimeout(() => setPrintOrder(null), 1000);
       }, 150);
     }
+    api.createOrder(order).then(() => refreshSync());
   };
 
   const handleAppendItemsToOrder = async (
@@ -363,6 +375,23 @@ export default function App() {
           setPrintOrder(null);
         }}
       />
+
+      {/* Toast notification when item is added to cart */}
+      {cartToast && (
+        <div className="fixed top-20 inset-x-4 max-w-md mx-auto z-50 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
+          <span className="text-xs sm:text-sm font-bold">{cartToast}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setCartToast(null);
+              setIsCartOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-white text-emerald-900 font-black text-xs shrink-0 cursor-pointer"
+          >
+            Ver Pedido &rarr;
+          </button>
+        </div>
+      )}
 
       {/* Top Bar Navigation */}
       <HeaderNav
